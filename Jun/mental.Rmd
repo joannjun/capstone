@@ -15,6 +15,8 @@ library(dplyr)
 
 county_health <- read_csv("analytic_data2025_v2.csv")
 
+# colnames(county_health)
+
 ```
 
 ```{r}
@@ -55,7 +57,7 @@ county_health_mental <- county_health |>
          "Lack of Social and Emotional Support CI high")
                                                                        
   
- # write.csv(county_health_mental, "county_health_mental.csv", row.names = FALSE)
+write.csv(county_health_mental, "county_health_mental.csv", row.names = FALSE)
 
 ```
 
@@ -66,17 +68,42 @@ county_health_feature <- read_csv("county_health_mental.csv")
 glimpse(county_health_feature)
 
 ```
+```{r}
+
+# install.packages("janitor")
+
+library(janitor)
+
+colnames(county_health_feature) <- gsub(" ", "_", colnames(county_health_feature)) 
+
+colnames(county_health_feature)
+
+#View(county_health_feature)
+
+# county_health_feature <- county_health_feature[-c(1),]
+#View(county_health_feature)
+
+# glimpse(county_health_feature)
+write.csv(county_health_feature, "county_health_mental.csv", row.names = FALSE)
+View(county_health_feature)
+
+
+```
 
 
 # EDA
 
+- create chloropleth map
+
 ```{r}
+
 
 ```
 
 # Modeling
 
 ```{r}
+
 
 ```
 
