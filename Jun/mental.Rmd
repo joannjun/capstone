@@ -5,26 +5,70 @@ date: "2025-06-20"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+
+# Data
+
+```{r}
+
+library(readxl)
+library(dplyr)
+
+county_health <- read_csv("analytic_data2025_v2.csv")
+
 ```
 
-## R Markdown
+```{r}
+#View(county_health)
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+#county_health[1, ]
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+#colnames(county_health)
 
-```{r cars}
-summary(cars)
+county_health_mental <- county_health |>
+  select("State FIPS Code", "County FIPS Code", "5-digit FIPS Code", 
+         "State Abbreviation", "Name", "Poor Mental Health Days raw value", 
+         "Poor Mental Health Days numerator", "Poor Mental Health Days denominator", 
+         "Poor Mental Health Days CI low", "Poor Mental Health Days CI high", 
+         "Poor or Fair Health raw value", "Poor or Fair Health numerator", 
+         "Poor or Fair Health denominator", "Poor or Fair Health CI low", 
+         "Poor or Fair Health CI high", "Mental Health Providers raw value", 
+         "Mental Health Providers numerator", "Mental Health Providers denominator", 
+         "Mental Health Providers CI low", "Mental Health Providers CI high", 
+         "Ratio of population to mental health providers.", 
+         "Frequent Mental Distress raw value", "Frequent Mental Distress numerator", 
+         "Frequent Mental Distress denominator", "Frequent Mental Distress CI low", 
+         "Frequent Mental Distress CI high", "Suicides raw value", "Suicides numerator", 
+         "Suicides denominator", "Suicides CI low", "Suicides CI high", "Crude suicide rate", 
+         "Suicides (AIAN)", "Suicides CI low (AIAN)", "Suicides CI high (AIAN)", "Suicides (Asian)", 
+         "Suicides CI low (Asian)", "Suicides CI high (Asian)", "Suicides (Black)", 
+         "Suicides CI low (Black)", "Suicides CI high (Black)", "Suicides (Hispanic)", 
+         "Suicides CI low (Hispanic)", "Suicides CI high (Hispanic)", "Suicides (White)", 
+         "Suicides CI low (White)", "Suicides CI high (White)", "Suicides (NHOPI)", 
+         "Suicides CI low (NHOPI)", "Suicides CI high (NHOPI)", "Feelings of Loneliness raw value", 
+         "Feelings of Loneliness numerator", "Feelings of Loneliness denominator", 
+         "Feelings of Loneliness CI low", "Feelings of Loneliness CI high", 
+         "Population raw value", "Population numerator", "Population denominator", 
+         "Population CI low", "Population CI high", "Lack of Social and Emotional Support raw value", 
+         "Lack of Social and Emotional Support numerator", 
+         "Lack of Social and Emotional Support denominator", 
+         "Lack of Social and Emotional Support CI low", 
+         "Lack of Social and Emotional Support CI high")
+                                                                       
+  
+ # write.csv(county_health_mental, "county_health_mental.csv", row.names = FALSE)
+
 ```
 
-## Including Plots
 
-You can also embed plots, for example:
+# EDA
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+```{r}
+
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+# Modeling
+
+```{r}
+
+```
+
