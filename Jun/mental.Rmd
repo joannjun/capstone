@@ -10,7 +10,7 @@ output: html_document
 
 ```{r}
 
-library(readxl)
+library(readr)
 library(dplyr)
 
 county_health <- read_csv("analytic_data2025_v2.csv")
@@ -56,6 +56,14 @@ county_health_mental <- county_health |>
                                                                        
   
  # write.csv(county_health_mental, "county_health_mental.csv", row.names = FALSE)
+
+```
+
+```{r}
+
+county_health_feature <- read_csv("county_health_mental.csv")
+
+glimpse(county_health_feature)
 
 ```
 
