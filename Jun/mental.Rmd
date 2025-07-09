@@ -15,8 +15,6 @@ library(dplyr)
 
 county_health <- read_csv("analytic_data2025_v2.csv")
 
-# colnames(county_health)
-
 ```
 
 ```{r}
@@ -57,7 +55,7 @@ county_health_mental <- county_health |>
          "Lack of Social and Emotional Support CI high")
                                                                        
   
-write.csv(county_health_mental, "county_health_mental.csv", row.names = FALSE)
+# write.csv(county_health_mental, "county_health_mental.csv", row.names = FALSE)
 
 ```
 
@@ -65,40 +63,258 @@ write.csv(county_health_mental, "county_health_mental.csv", row.names = FALSE)
 
 county_health_feature <- read_csv("county_health_mental.csv")
 
-glimpse(county_health_feature)
-
-```
-```{r}
-
-# install.packages("janitor")
-
-library(janitor)
-
-colnames(county_health_feature) <- gsub(" ", "_", colnames(county_health_feature)) 
-
-colnames(county_health_feature)
-
-#View(county_health_feature)
-
-# county_health_feature <- county_health_feature[-c(1),]
-#View(county_health_feature)
-
 # glimpse(county_health_feature)
-write.csv(county_health_feature, "county_health_mental.csv", row.names = FALSE)
-View(county_health_feature)
-
 
 ```
 
 
-# EDA
+```{r}
+county_health_clean <- read_csv("county_health_mental.csv") |>
+  as_tibble()
+#View(counties)
+#is.na(county_health_clean)
 
-- create chloropleth map
+```
+
+
+
+```{r}
+colnames(county_health_clean)
+#county_health_clean <- rename(county_health_clean, fips=`5-digit_FIPS_Code`)
+
+counties$fips <- sprintf("%05d", as.numeric(counties$fips))
+
+county_health_clean$fips
+# county_health_clean$fips <- sprintf("%05d", as.numeric(county_health_clean$`5-digit_FIPS_Code`))
+
+
+map_data_final <- county_health_clean |>
+  select(fips, State_Abbreviation, County_FIPS_Code, State_FIPS_Code, Poor_Mental_Health_Days_raw_value,
+         Mental_Health_Providers_raw_value, Crude_suicide_rate, Suicides_raw_value, Feelings_of_Loneliness_raw_value, Population_raw_value, Population_raw_value, Lack_of_Social_and_Emotional_Support_raw_value)
+
+map_data_final |>
+  mutate(ratio_mental_pop = Population_raw_value/Mental_Health_Providers_raw_value)
+
+glimpse(map_data_final)
+
+
+numeric_mental <- map_data_final |>
+  select(Poor_Mental_Health_Days_raw_value, Crude_suicide_rate, Suicides_raw_value, Feelings_of_Loneliness_raw_value, Population_raw_value, Lack_of_Social_and_Emotional_Support_raw_value)
+
+str(numeric_mental)
+```
+
+```{r}
+res <- cor(numeric_mental, use = "complete.obs")
+
+# install.packages("Hmisc")
+library(Hmisc)
+
+res2 <- rcorr(as.matrix(numeric_mental))
+
+res2
+
+res2$P
+
+library(corrplot)
+corrplot(res, type = "upper", order = "hclust", 
+         tl.col = "black", tl.srt = 45, tl.cex = 0.8)
+```
+Feelings of loneliness, Lack of Social and Emotional Support Raw,
+Poor mental health days slightly positively correlated with everything minus population raw value
+Population Raw Value not correalted to any
+
+
 
 ```{r}
 
 
+missing <- is.na(map_data_final)
+missing
+
+#map_data_final |>
+  #mutate(ratio_mental_pop = Population_raw_value/Mental_Health_Providers_raw_value)
+
+#summary(map_data_final$ratio_mental_pop)
+
+#colnames(map_data_final)
 ```
+
+
+```{r}
+colnames(map_data_final)
+connecticut <- map_data_final |>
+  select("State_FIPS_Code" == 09)
+
+
+```
+
+```{r}
+
+library(plotly)
+library(rjson)
+
+# Load GeoJSON for US counties
+url <- 'https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json'
+counties <- rjson::fromJSON(file = url)
+
+# Clean up FIPS codes — ensure 5-character strings
+map_data_final$fips <- sprintf("%05s", map_data_final$fips)
+
+# Plotly settings
+g <- list(
+  scope = 'usa',
+  projection = list(type = 'albers usa'),
+  showlakes = TRUE,
+  lakecolor = toRGB('white')
+)
+
+# Build the plot
+fig <- plot_ly()
+fig <- fig %>%
+  add_trace(
+    type = "choropleth",
+    geojson = counties,
+    locations = map_data_final$fips,
+    z = map_data_final$Poor_Mental_Health_Days_raw_value,
+    colorscale = "Viridis",
+    zmin = 0,
+    zmax = 12,
+    marker = list(line = list(width = 0)),
+    featureidkey = "id"
+  ) %>%
+  colorbar(title = "Poor Mental Health Days") %>%
+  layout(
+    title = "Poor Mental Health Days",
+    geo = g
+  )
+
+fig
+
+
+```
+
+
+
+```{r}
+
+library(plotly)
+library(rjson)
+
+# Load GeoJSON for US counties
+url <- 'https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json'
+counties <- rjson::fromJSON(file = url)
+
+# Clean up FIPS codes — ensure 5-character strings
+map_data_final$fips <- sprintf("%05s", map_data_final$fips)
+
+# Plotly settings
+g <- list(
+  scope = 'usa',
+  projection = list(type = 'albers usa'),
+  showlakes = TRUE,
+  lakecolor = toRGB('white')
+)
+
+# Build the plot
+fig <- plot_ly()
+fig <- fig %>%
+  add_trace(
+    type = "choropleth",
+    geojson = counties,
+    locations = map_data_final$fips,
+    z = map_data_final$Suicides_raw_value,
+    colorscale = "Viridis",
+    zmin = 0,
+    zmax = 12,
+    marker = list(line = list(width = 0)),
+    featureidkey = "id"
+  ) %>%
+  colorbar(title = "Suicides") %>%
+  layout(
+    title = "Suicides per County",
+    geo = g
+  )
+
+fig
+
+
+```
+
+
+```{r}
+
+library(plotly)
+library(rjson)
+
+# Load GeoJSON for US counties
+url <- 'https://raw.githubusercontent.com/plotly/datasets/master/geojson-counties-fips.json'
+counties <- rjson::fromJSON(file = url)
+
+# Clean up FIPS codes — ensure 5-character strings
+map_data_final$fips <- sprintf("%05s", map_data_final$fips)
+
+# Plotly settings
+g <- list(
+  scope = 'usa',
+  projection = list(type = 'albers usa'),
+  showlakes = TRUE,
+  lakecolor = toRGB('white')
+)
+
+# Build the plot
+fig <- plot_ly()
+fig <- fig %>%
+  add_trace(
+    type = "choropleth",
+    geojson = counties,
+    locations = map_data_final$fips,
+    z = map_data_final$Mental_Health_Providers_raw_value,
+    colorscale = "Viridis",
+    zmin = 0,
+    zmax = 12,
+    marker = list(line = list(width = 0)),
+    featureidkey = "id"
+  ) %>%
+  colorbar(title = " # of Mental Health Providers") %>%
+  layout(
+    title = "Mental Health Providers per County",
+    geo = g
+  )
+
+fig
+
+```
+
+
+```{r}
+# Download and parse U.S. county adjacency data
+adj_url <- "https://www2.census.gov/geo/docs/reference/county_adjacency.txt"
+adj_file <- tempfile(fileext = ".txt")
+download.file(adj_url, adj_file)
+
+# Read and build adjacency list
+adj_data <- readLines(adj_file)
+
+adj_list <- list()
+current_fips <- NULL
+
+for (line in adj_data) {
+  if (!startsWith(line, "\t")) {
+    current_fips <- trimws(substr(line, 101, 105))
+    adj_list[[current_fips]] <- character()
+  } else {
+    neighbor_fips <- trimws(substr(line, 101, 105))
+    if (nzchar(neighbor_fips)) {
+      adj_list[[current_fips]] <- c(adj_list[[current_fips]], neighbor_fips)
+    }
+  }
+}
+
+
+```
+
+
 
 # Modeling
 
