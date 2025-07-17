@@ -31,6 +31,8 @@ The question we wanted to answer is do the number of mental health professionals
 
 Describe the data you’re using in detail, where you accessed it, along with relevant exploratory data analysis (EDA). You should also include descriptions of any relevant data pre-processing steps (e.g., whether you consider specific observations, create any meaningful features, etc.---but don't mention minor steps like column type conversion, filtering out unnecessary rows)
 
+We are using the 2025 County Health Rankings Dataset, which is collected by the University of Wisconsin Population Health Institute. The data ranks each county in all 50 states based on their health outcomes and variety of health factors. This dataset is widely used by policymakers and researchers to better understand and address factors influencing community and national health. Each row represents one U.S. county and its county-level metrics, and each column is a particular variable. We looked at 6 specific columns, focusing only on the raw values in that category. These were: mental health providers, poor mental health days, lack of social and emotional support, suicide rate, frequent mental distress, and county FIPS code. To standardize for population, we also created a variable of Mental Health Providers per 100,000 people and used this to improve our visualizations.
+
 ## Methods
 
 Describe the modeling techniques you chose, their assumptions, justifications for why they are appropriate for the problem, and how you're comparing/evaluating the different methods.
