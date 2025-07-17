@@ -2,7 +2,7 @@
 title: "Title"
 author:
   - Joann Jun
-  - Lily Franscen
+  - Lily Fransen
   - Karim Zaggoti
 date: "July 25, 2025"
 toc: true
