@@ -21,26 +21,44 @@ execute:
 
 ## Introduction 
 
+In recent years, the mental health epidemic has become a growing public health concern. Factors such as social isolation, economic uncertainty, stigmitization of mental health and limited access to care have contributed to an increase in reported cases of anxiety, depression, and other mental health conditions. Poor mental health can significantly affect an individuals' quality of life, impacting everything from emotional well being, job performace, relationship with others and physical health. Yet according to the National Institutes of Health (NIH), only about half of people with mental illnesses recieve treatment. This trend raises an important question: does access to mental health care influence outcomes?
 
-Describe the problem and why it is important.
+One critical aspect of addressing mental health challenges is ensuring that individuals have access to qualified mental health professionals. However, access to care is not evenly distributed across geographic regions. Some counties have a dense network of mental health providers, while others face shortages that can leave residents without adequate support.
 
-Mental health is prevalent topic especially in today's day and age. It affects our feelings, mood, productivity and more. In the last several years, we have seen an increase in poor mental health.
-The question we wanted to answer is do the number of mental health professionals per county affect the number of poor mental health days?
+This study seeks to explore the relationship between the availability of mental health professionals and the mental well being of a population. Specifically, we ask: Does the number of mental health professionals per county affect the average number of poor mental health days reported by residents? Understanding this relationship can help inform policy decisions, guide resource allocation, and highlight areas in need of improved mental health infrastructure. In this study, we aim to examine whether the number of mental health professionals available in a county is associated with the average number of poor mental health days reported by residents. Understanding this relationship is important for informing resource allocation, shaping public health policies, and ultimately improving mental health outcomes at the community level.
 
 ## Data
 
 Describe the data you’re using in detail, where you accessed it, along with relevant exploratory data analysis (EDA). You should also include descriptions of any relevant data pre-processing steps (e.g., whether you consider specific observations, create any meaningful features, etc.---but don't mention minor steps like column type conversion, filtering out unnecessary rows)
 
-We are using the 2025 County Health Rankings Dataset, which is collected by the University of Wisconsin Population Health Institute. The data ranks each county in all 50 states based on their health outcomes and variety of health factors. This dataset is widely used by policymakers and researchers to better understand and address factors influencing community and national health. Each row represents one U.S. county and its county-level metrics, and each column is a particular variable. We looked at 6 specific columns, focusing only on the raw values in that category. These were: mental health providers, poor mental health days, lack of social and emotional support, suicide rate, frequent mental distress, and county FIPS code. To standardize for population, we also created a variable of Mental Health Providers per 100,000 people and used this to improve our visualizations.
+We are using the 2025 County Health Rankings Dataset, which is collected by the University of Wisconsin Population Health Institute. The data ranks each county in all 50 states based on their health outcomes and variety of health factors. This dataset is widely used by policymakers and researchers to better understand and address factors influencing community and national health. Each row represents one U.S. county and its county-level metrics, and each column is a particular variable. We looked at 6 specific columns, focusing only on the raw values in that category. These were: mental health providers, poor mental health days, lack of social and emotional support, suicide rate, frequent mental distress, and county FIPS code. To standardize for population, we also engineered a variable of the proportion of Mental Health Providers per 100,000 people and used this to improve our visualizations.
 
 ## Methods
 
 Describe the modeling techniques you chose, their assumptions, justifications for why they are appropriate for the problem, and how you're comparing/evaluating the different methods.
 
+Poisson (add equation)
+- ASS to check for poisson
+- Normality: shapiro wilk -- p-value is less than the significance level of $\alpha$ = 0.05. This means that the normality assumption is satisfied. Variance
+To test which variables were significant, we used Poisson regression. We chose this
+- Indepependence
+- Equal mean and variance
+
+ML
+Since we had a large sample, we decided to implement some machine learning to help create predictive models. We selected Random Forest and XGBoost and evaluated them use RMSE. The lower the RMSE is the better the model is. 
+
 ## Results
 
 Describe your results. This can include tables and plots showing your results, as well as text describing how your models worked and the appropriate interpretations of the relevant output. (Note: Don’t just write out the textbook interpretations of all model coefficients. Instead, interpret the output that is relevant for your question of interest that is framed in the introduction)
 
+mention this
+ - There was no significant relationship between
+
+When evaluating the 2 models, Random Forest and XGBoost, we saw that the RMSE value for XGBoost was 0.44317 which was slightly lower than the RMSE for Random Forest, which was _____. This meant that the XGBoost model has a greater accuracy and predictive power compared to Random Forest.
+
+We also used SHAP to see feature importance in predicting the amount of poor mental health days in the model. We saw that 
+
+add SHAP and % RMSE 
 
 RMSE -- SHAP & Feature Importance
 
@@ -49,8 +67,9 @@ RMSE -- SHAP & Feature Importance
 
 Make recommendations to UHG/Optum on specific targeted programs that can address the question of interest. Use evidence found in your analysis to back up your recommendations. This should be aimed at a non-technical reader.
 
+As we mentioned before, there was no significant relationship between the ratio of mental health providers in a county and the amount of poor mental health days. This means that the number of mental health providers in a county does not matter and that the reason for these poor mental health days because of social reasons. 
 
-Social outreach
+We would recommend doing some more social outreach/
 
 
 ## Discussion
@@ -58,10 +77,11 @@ Social outreach
 Give your conclusions and summarize what you have learned with regards to your question of interest. Are there any limitations with the approaches you used? What do you think are the next steps to follow-up your project?
 
 
-Limitations - more data
+Limitations - more data (geographic )
 Look into social and economic factors
 
-Distance to mental health provider
+Distance to mental health provider 
+Transportation
 
 
 ## Appendix: A quick tutorial
