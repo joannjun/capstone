@@ -21,11 +21,12 @@ execute:
 
 ## Introduction 
 
-In recent years, the mental health epidemic has become a growing public health concern. Factors such as social isolation, economic uncertainty, stigmitization of mental health and limited access to care have contributed to an increase in reported cases of anxiety, depression, and other mental health conditions. Poor mental health can significantly affect an individuals' quality of life, impacting everything from emotional well being, job performace, relationship with others and physical health. Yet according to the National Institutes of Health (NIH), only about half of people with mental illnesses recieve treatment. This trend raises an important question: does access to mental health care influence outcomes?
+In recent years, the mental health epidemic has become a growing public health concern. Factors such as social isolation, economic uncertainty, stigmitization of mental health and limited access to care have contributed to an increase in reported cases of anxiety, depression, and other mental health conditions. According to the CDC, more than 1 in 5 people will have mental health illness. Poor mental health can significantly affect an individuals' quality of life, impacting everything from emotional well being, job performace, relationship with others and physical health. Yet according to the National Institutes of Health (NIH), only about half of people with mental illnesses recieve treatment(CITE SOURCE). This trend raises an important question: does access to mental health care influence outcomes?
+ (insert stats & citations)
+  (Fix transition between paragraphs)
+One critical aspect of addressing this question is ensuring that individuals have access to qualified mental health professionals. However, access to care is not evenly distributed across geographic regions. Some counties have a dense network of mental health providers, while others face shortages that can leave residents without adequate support.
 
-One critical aspect of addressing mental health challenges is ensuring that individuals have access to qualified mental health professionals. However, access to care is not evenly distributed across geographic regions. Some counties have a dense network of mental health providers, while others face shortages that can leave residents without adequate support.
-
-This study seeks to explore the relationship between the availability of mental health professionals and the mental well being of a population. Specifically, we ask: Does the number of mental health professionals per county affect the average number of poor mental health days reported by residents? Understanding this relationship can help inform policy decisions, guide resource allocation, and highlight areas in need of improved mental health infrastructure. In this study, we aim to examine whether the number of mental health professionals available in a county is associated with the average number of poor mental health days reported by residents. Understanding this relationship is important for informing resource allocation, shaping public health policies, and ultimately improving mental health outcomes at the community level.
+This study seeks to explore the relationship between the availability of mental health professionals and the mental well being of a population. Specifically, we ask: Does the number of mental health professionals per county affect the average number of poor mental health days? Understanding this relationship can help inform policy decisions, guide resource allocation, highlight areas in need of improved mental health infrastructure, and ultimately improving mental health outcomes at the community level. (Too long sentence?)
 
 ## Data
 
@@ -77,14 +78,18 @@ We would recommend doing some more social outreach/
 Give your conclusions and summarize what you have learned with regards to your question of interest. Are there any limitations with the approaches you used? What do you think are the next steps to follow-up your project?
 
 
-Limitations - more data (geographic )
-Look into social and economic factors
 
-Distance to mental health provider 
-Transportation
+Limitations - more data (geographic like terrain,Distance to mental health provider, Transportation)
+Look into social and economic factors
+maybe online mental health providerrs
+internet access
+
+
 
 
 ## Appendix: A quick tutorial
+
+## Sources
 
 **(Feel free to remove this section when you submit)**
 
