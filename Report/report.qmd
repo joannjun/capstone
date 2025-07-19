@@ -21,12 +21,13 @@ execute:
 
 ## Introduction 
 
-In recent years, the mental health epidemic has become a growing public health concern. Factors such as social isolation, economic uncertainty, stigmitization of mental health and limited access to care have contributed to an increase in reported cases of anxiety, depression, and other mental health conditions. According to the CDC, more than 1 in 5 people will have mental health illness. Poor mental health can significantly affect an individuals' quality of life, impacting everything from emotional well being, job performace, relationship with others and physical health. Yet according to the National Institutes of Health (NIH), only about half of people with mental illnesses recieve treatment(CITE SOURCE). This trend raises an important question: does access to mental health care influence outcomes?
- (insert stats & citations)
-  (Fix transition between paragraphs)
-One critical aspect of addressing this question is ensuring that individuals have access to qualified mental health professionals. However, access to care is not evenly distributed across geographic regions. Some counties have a dense network of mental health providers, while others face shortages that can leave residents without adequate support.
+In recent years, the mental health epidemic has become a growing public health concern. Factors such as social isolation, economic uncertainty, the stigmatization of mental illness, and limited access to care have all contributed to an increase in reported cases of anxiety, depression, and other mental health conditions. According to the Centers for Disease Control and Prevention (CDC), more than one in five adults in the United States live with a mental illness (insert citation). Poor mental health can significantly affect an individual’s quality of life, impacting emotional well-being, job performance, relationships, and physical health. Yet, according to the National Institutes of Health (NIH), only about half of those experiencing mental illness receive treatment (insert citation).
 
-This study seeks to explore the relationship between the availability of mental health professionals and the mental well being of a population. Specifically, we ask: Does the number of mental health professionals per county affect the average number of poor mental health days? Understanding this relationship can help inform policy decisions, guide resource allocation, highlight areas in need of improved mental health infrastructure, and ultimately improving mental health outcomes at the community level. (Too long sentence?)
+This concerning gap between mental health needs and treatment raises an important question: does access to mental health care influence mental health outcomes?
+
+One key component in addressing this issue is ensuring that individuals have access to qualified mental health professionals. However, access to care is not evenly distributed across geographic regions. While some counties benefit from a dense network of providers, others face critical shortages, leaving residents without adequate support or timely treatment.
+
+This study aims to explore the relationship between the availability of mental health professionals and the mental well being of a population. Specifically, we ask: Does the number of mental health professionals per county affect the average number of poor mental health days? Understanding this relationship can help inform policy decisions, guide resource allocation, and identify areas most in need of improved mental health infrastructure, ultimately working toward better mental health outcomes at the community level.
 
 ## Data
 
@@ -34,11 +35,16 @@ Describe the data you’re using in detail, where you accessed it, along with re
 
 We are using the 2025 County Health Rankings Dataset, which is collected by the University of Wisconsin Population Health Institute. The data ranks each county in all 50 states based on their health outcomes and variety of health factors. This dataset is widely used by policymakers and researchers to better understand and address factors influencing community and national health. Each row represents one U.S. county and its county-level metrics, and each column is a particular variable. We looked at 6 specific columns, focusing only on the raw values in that category. These were: mental health providers, poor mental health days, lack of social and emotional support, suicide rate, frequent mental distress, and county FIPS code. To standardize for population, we also engineered a variable of the proportion of Mental Health Providers per 100,000 people and used this to improve our visualizations.
 
+--ADD EDA--
+
+
 ## Methods
 
 Describe the modeling techniques you chose, their assumptions, justifications for why they are appropriate for the problem, and how you're comparing/evaluating the different methods.
 
 Poisson (add equation)
+
+$log(\mu_i) = \sum_{j=0}^{M}x_{ij}\beta_j$ $j=1...6$
 - check ass for poisson
 - Normality: shapiro wilk -- p-value is ___ which is less than the significance level of $\alpha$ = 0.05. This means that the normality assumption is satisfied. Variance
 To test which variables were significant, we used Poisson regression. We chose this
@@ -46,7 +52,7 @@ To test which variables were significant, we used Poisson regression. We chose t
 - Equal mean and variance
 
 ML
-Since we had a large sample, we decided to implement some machine learning to help create predictive models. We selected Random Forest and XGBoost and evaluated them use RMSE. The lower the RMSE is the better the model is. 
+Since we had a large sample, we decided to implement some machine learning to create predictive models. We selected Random Forest and XGBoost and evaluated them use RMSE. The lower the RMSE is the better the model is. 
 
 ## Results
 
@@ -87,9 +93,9 @@ Give your conclusions and summarize what you have learned with regards to your q
 
 --LIMITATIONS--
 - more data (geographic like terrain,Distance to mental health provider, Transportation)
-Look into social and economic factors
+Look into social (race, gender) and economic factors (income, insurance)
 maybe online mental health providerrs, internet access (online therapy)
-
+Data on quality of therapy/mental healthcare
 
 ## Appendix: A quick tutorial
 
