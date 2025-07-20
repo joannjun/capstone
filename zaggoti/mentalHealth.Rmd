@@ -1,0 +1,253 @@
+---
+title: "Capstone"
+author: "Karim Zaggoti"
+output: html_document
+---
+
+# Data
+
+```{r}
+
+library(tidyverse)     
+library(readr)         
+library(dplyr)
+library(ggplot2)       
+library(ggrepel)       
+library(viridis)       
+library(caret)         
+library(randomForest)  
+library(broom)         
+library(usmap)         
+library(sf)            
+library(grid) 
+library(car)
+
+```
+
+```{r}
+library(tidyverse)
+
+# Load and clean data
+raw_data <- read_csv("county_health_mental.csv", show_col_types = FALSE)
+raw_data <- raw_data[-1, ]
+
+# Select and rename relevant variables
+mental_health_full <- raw_data |>
+  select(
+    fips             = `5-digit_FIPS_Code`,
+    state_abbr       = State_Abbreviation,
+    county_name      = Name,
+    poor_mental_days = Poor_Mental_Health_Days_raw_value,
+    suicide_rate     = Suicides_raw_value,
+    social_support   = Lack_of_Social_and_Emotional_Support_raw_value,
+    provider_ratio   = Ratio_of_population_to_mental_health_providers.,
+    loneliness       = Feelings_of_Loneliness_raw_value,
+    crude_suicide    = Crude_suicide_rate,
+    population       = Population_raw_value
+  ) |>
+  filter(
+    !is.na(suicide_rate),
+    !is.na(social_support),
+    !is.na(provider_ratio),
+    county_name != "United States"
+  ) |>
+  mutate(
+    fips = str_pad(fips, width = 5, side = "left", pad = "0"),
+    across(
+      c(suicide_rate, poor_mental_days, social_support,
+        provider_ratio, loneliness, crude_suicide, population),
+      as.numeric
+    )
+  )
+```
+
+## EDA
+
+```{r}
+ggplot(mental_health_full, aes(x = provider_ratio, y = suicide_rate, color = social_support)) +
+  geom_point(alpha = 0.6, size = 2) +
+  scale_color_gradient(low = "skyblue", high = "darkred") +
+  geom_smooth(method = "lm", se = FALSE, color = "black", linetype = "dashed") +
+  geom_text_repel(
+    data = mental_health_full |> filter(suicide_rate > 25),
+    aes(label = county_name),
+    size = 2.8,
+    color = "gray30",
+    max.overlaps = 10
+  ) +
+  labs(
+    title = "As Provider Access Falls and Isolation Grows, Suicide Rates Rise",
+    x = "Population per Mental Health Provider",
+    y = "Suicide Rate (per 100,000)",
+    color = "Lack of Social Support"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    plot.subtitle = element_text(margin = ggplot2::margin(b = 10)),
+    legend.position = "right"
+  )
+```
+
+
+
+## Poisson Regression 
+
+```{r}
+# Fit the quasipoisson model (accounts for overdispersion)
+quasi_model <- glm(
+  poor_mental_days ~ social_support + loneliness + crude_suicide +
+    population + suicide_rate + provider_ratio,
+  data = mental_health_full,
+  family = quasipoisson(link = "log")
+)
+
+# Summary output
+summary(quasi_model)
+
+# Check for overdispersion
+dispersion <- sum(residuals(quasi_model, type = "pearson")^2) / quasi_model$df.residual
+cat("📏 Dispersion statistic:", round(dispersion, 3), "\n")  # >1 suggests overdispersion
+
+# Check multicollinearity
+vif(quasi_model)
+
+# Residuals vs Fitted plot
+plot(quasi_model$fitted.values,
+     residuals(quasi_model, type = "pearson"),
+     xlab = "Fitted values", ylab = "Pearson Residuals",
+     main = "Residuals vs Fitted Plot")
+abline(h = 0, col = "red", lty = 2)
+
+# Exponentiated coefficients (interpretable as multiplicative effects)
+exp_effects <- exp(coef(quasi_model))
+round(100 * (exp_effects - 1), 1)  # percent increase/decrease per unit increase
+
+# Coefficient plot with 95% confidence intervals
+tidy(quasi_model, conf.int = TRUE) |>
+  mutate(term = recode(term,
+                       social_support = "Lack of Social Support",
+                       loneliness     = "Feelings of Loneliness",
+                       crude_suicide  = "Crude Suicide Rate",
+                       population     = "Population",
+                       suicide_rate   = "Suicide Rate",
+                       provider_ratio = "Provider Ratio",
+                       `(Intercept)`  = "Intercept")) |>
+  filter(term != "Intercept") |>
+  ggplot(aes(x = reorder(term, estimate), y = estimate)) +
+  geom_col(fill = "tomato") +
+  geom_errorbar(aes(ymin = conf.low, ymax = conf.high), width = 0.2) +
+  coord_flip() +
+  labs(
+    title = "Poisson Regression Coefficients with 95% Confidence Intervals",
+    x = "Predictor",
+    y = "Log Coefficient Estimate"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    axis.title.y = element_text(margin = margin(r = 10)),
+    axis.title.x = element_text(margin = margin(t = 10))
+  )
+
+```
+
+### Less Technical Poisson Regression
+```{r}
+# Standardize predictor variables 
+standardized_data <- mental_health_full |>
+  mutate(across(
+    c(social_support, loneliness, crude_suicide, population, suicide_rate, provider_ratio),
+    ~ scale(.)[, 1]
+  ))
+
+# Fit the quasi-Poisson model with standardized predictors
+quasi_model_std <- glm(
+  poor_mental_days ~ social_support + loneliness + crude_suicide +
+    population + suicide_rate + provider_ratio,
+  data = standardized_data,
+  family = quasipoisson(link = "log")
+)
+
+plot_data <- plot_data |>
+  mutate(
+    Significance = ifelse(lower > 0, "Statistically Significant", "Not Significant")
+  )
+
+# Plot
+ggplot(plot_data, aes(x = reorder(Predictor, effect), y = effect, fill = Significance)) +
+  geom_col() +
+  coord_flip() +
+  labs(
+    title = "What Predicts More Poor Mental Health Days?",
+    subtitle = "Only 'Loneliness' and 'Lack of Social Support' show clear significant effects",
+    x = "",
+    y = "Estimated % Change in Poor Mental Health Days"
+  ) +
+  scale_fill_manual(values = c("Statistically Significant" = "steelblue", "Not Significant" = "gray80")) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    plot.subtitle = element_text(margin = ggplot2::margin(b = 10)),
+    legend.position = "bottom"
+  )
+
+```
+
+
+
+
+###Random Forest 
+```{r}
+# Prepare data for modeling
+rf_data <- mental_health_full |>
+  select(
+    poor_mental_days, social_support, loneliness,
+    suicide_rate, crude_suicide, provider_ratio, population
+  )
+
+# Split into training and testing sets
+set.seed(42)
+train_indices <- createDataPartition(rf_data$poor_mental_days, p = 0.8, list = FALSE)
+train_data <- rf_data[train_indices, ]
+test_data  <- rf_data[-train_indices, ]
+
+# Train Random Forest model
+rf_model <- randomForest(
+  poor_mental_days ~ .,
+  data = train_data,
+  ntree = 500,
+  importance = TRUE
+)
+
+# Evaluate model
+predictions <- predict(rf_model, test_data)
+mse <- mean((predictions - test_data$poor_mental_days)^2)
+rmse <- sqrt(mse)
+
+cat(" Mean Squared Error (MSE):", round(mse, 3), "\n")
+cat(" Root Mean Squared Error (RMSE):", round(rmse, 3), "\n")
+
+# Variable importance
+var_imp <- importance(rf_model) |>
+  as.data.frame() |>
+  rownames_to_column("Variable") |>
+  mutate(`%IncRMSE` = `%IncMSE` / 2) |>
+  arrange(desc(`%IncRMSE`))
+
+# Plot variable importance
+ggplot(var_imp, aes(x = reorder(Variable, `%IncRMSE`), y = `%IncRMSE`)) +
+  geom_col(fill = "blue") +
+  coord_flip() +
+  labs(
+    title = "Variable Importance from Random Forest",
+    x = "Predictor",
+    y = "% Increase in RMSE"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    axis.title.y = element_text(margin = ggplot2::margin(r = 10)),
+    axis.title.x = element_text(margin = ggplot2::margin(t = 10))
+  )
+```
