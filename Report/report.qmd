@@ -37,6 +37,9 @@ We are using the 2025 County Health Rankings Dataset, which is collected by the 
 
 --ADD EDA--
 
+We saw that the data was normally distributed.
+
+
 
 ## Methods
 
@@ -45,6 +48,7 @@ Describe the modeling techniques you chose, their assumptions, justifications fo
 Poisson (add equation)
 
 $log(\mu_i) = \sum_{j=0}^{M}x_{ij}\beta_j$ $j=1...6$
+
 - check ass for poisson
 - Normality: shapiro wilk -- p-value is ___ which is less than the significance level of $\alpha$ = 0.05. This means that the normality assumption is satisfied. Variance
 To test which variables were significant, we used Poisson regression. We chose this
