@@ -31,7 +31,11 @@ library(tidyverse)
 raw_data <- read_csv("county_health_mental.csv", show_col_types = FALSE)
 raw_data <- raw_data[-1, ]
 
-# Select and rename relevant variables
+#additional data 
+additional_data <- read_csv("analytic_data2025_v2.csv", show_col_types = FALSE)
+
+
+# Join both data sets by FIPS Code 
 mental_health_full <- raw_data |>
   select(
     fips             = `5-digit_FIPS_Code`,
@@ -45,20 +49,39 @@ mental_health_full <- raw_data |>
     crude_suicide    = Crude_suicide_rate,
     population       = Population_raw_value
   ) |>
+  mutate(
+    fips = str_pad(fips, width = 5, side = "left", pad = "0")
+  ) |>
+  left_join(
+    additional_data |>
+      select(
+        fips = `5-digit FIPS Code`,
+        uninsured_adults            = `Uninsured Adults raw value`,
+        adult_smoking               = `Adult Smoking raw value`,
+        physical_inactivity         = `Physical Inactivity raw value`,
+        insufficient_sleep          = `Insufficient Sleep raw value`,
+        excessive_drinking          = `Excessive Drinking raw value`,
+        frequent_physical_distress  = `Frequent Physical Distress raw value`
+      ) |>
+      mutate(fips = str_pad(fips, width = 5, side = "left", pad = "0")),
+    by = "fips"
+  ) |>
   filter(
-    !is.na(suicide_rate),
+    !is.na(poor_mental_days),
     !is.na(social_support),
     !is.na(provider_ratio),
+    !is.na(uninsured_adults),
     county_name != "United States"
   ) |>
-  mutate(
-    fips = str_pad(fips, width = 5, side = "left", pad = "0"),
-    across(
-      c(suicide_rate, poor_mental_days, social_support,
-        provider_ratio, loneliness, crude_suicide, population),
-      as.numeric
-    )
-  )
+  mutate(across(
+    c(
+      suicide_rate, poor_mental_days, social_support,
+      provider_ratio, loneliness, crude_suicide, population,
+      uninsured_adults, adult_smoking, physical_inactivity,
+      insufficient_sleep, excessive_drinking, frequent_physical_distress
+    ),
+    as.numeric
+  ))
 ```
 
 ## EDA
@@ -154,47 +177,84 @@ tidy(quasi_model, conf.int = TRUE) |>
 
 ### Less Technical Poisson Regression
 ```{r}
-# Standardize predictor variables 
+# Step 1: Standardize predictors
 standardized_data <- mental_health_full |>
   mutate(across(
-    c(social_support, loneliness, crude_suicide, population, suicide_rate, provider_ratio),
+    c(provider_ratio, loneliness, social_support, suicide_rate),
     ~ scale(.)[, 1]
   ))
 
-# Fit the quasi-Poisson model with standardized predictors
-quasi_model_std <- glm(
-  poor_mental_days ~ social_support + loneliness + crude_suicide +
-    population + suicide_rate + provider_ratio,
+# Step 2: Fit Quasi-Poisson regression
+quasi_model_selected <- glm(
+  poor_mental_days ~ provider_ratio + loneliness + social_support + suicide_rate,
   data = standardized_data,
   family = quasipoisson(link = "log")
 )
 
-plot_data <- plot_data |>
+# Step 3: Generate clean summary table with p-values
+clean_summary <- broom::tidy(quasi_model_selected, conf.int = TRUE) |>
+  filter(term != "(Intercept)") |>
   mutate(
-    Significance = ifelse(lower > 0, "Statistically Significant", "Not Significant")
+    `Percent Change in Poor Mental Health Days` = 100 * (exp(estimate) - 1),
+    `95% CI Lower` = 100 * (exp(conf.low) - 1),
+    `95% CI Upper` = 100 * (exp(conf.high) - 1),
+    Predictor = case_when(
+      term == "provider_ratio" ~ "Provider Ratio",
+      term == "loneliness" ~ "Loneliness (0–1 Scale)",
+      term == "social_support" ~ "Lack of Social Support (0–1 Scale)",
+      term == "suicide_rate" ~ "Suicide Rate"
+    )
+  ) |>
+  select(
+    Predictor,
+    `Percent Change in Poor Mental Health Days`,
+    `95% CI Lower`,
+    `95% CI Upper`,
+    `p.value`
   )
 
-# Plot
-ggplot(plot_data, aes(x = reorder(Predictor, effect), y = effect, fill = Significance)) +
-  geom_col() +
-  coord_flip() +
-  labs(
-    title = "What Predicts More Poor Mental Health Days?",
-    subtitle = "Only 'Loneliness' and 'Lack of Social Support' show clear significant effects",
-    x = "",
-    y = "Estimated % Change in Poor Mental Health Days"
-  ) +
-  scale_fill_manual(values = c("Statistically Significant" = "steelblue", "Not Significant" = "gray80")) +
-  theme_minimal(base_size = 14) +
-  theme(
-    plot.title = element_text(face = "bold"),
-    plot.subtitle = element_text(margin = ggplot2::margin(b = 10)),
-    legend.position = "bottom"
-  )
-
+# Step 4: Display the table
+print(clean_summary, n = Inf, width = Inf)
 ```
 
+###Quasi Possion Joint 
+```{r}
+# Standardize selected predictors
+standardized_data <- mental_health_full |>
+  mutate(across(
+    c(provider_ratio, loneliness, social_support, crude_suicide),
+    ~ scale(.)[, 1]
+  ))
 
+# Fit the Quasi-Poisson regression model
+quasi_model_selected <- glm(
+  poor_mental_days ~ provider_ratio + loneliness + social_support + crude_suicide,
+  data = standardized_data,
+  family = quasipoisson(link = "log")
+)
+
+# Summary of the model
+summary(quasi_model_selected)
+
+# Check for multicollinearity (VIF)
+vif(quasi_model_selected)
+
+# Check overdispersion (ideal: ~1)
+dispersion <- sum(residuals(quasi_model_selected, type = "pearson")^2) / 
+  quasi_model_selected$df.residual
+cat("📏 Dispersion statistic:", round(dispersion, 3), "\n")
+
+# Residuals vs Fitted plot (to inspect pattern)
+plot(quasi_model_selected$fitted.values,
+     residuals(quasi_model_selected, type = "pearson"),
+     xlab = "Fitted Values", ylab = "Pearson Residuals",
+     main = "Residuals vs Fitted Values")
+abline(h = 0, col = "red", lty = 2)
+
+# Shapiro-Wilk test for normality of residuals (optional)
+shapiro_test <- shapiro.test(residuals(quasi_model_selected, type = "pearson"))
+cat("Shapiro-Wilk p-value:", shapiro_test$p.value, "\n")
+```
 
 
 ###Random Forest 
@@ -211,6 +271,9 @@ set.seed(42)
 train_indices <- createDataPartition(rf_data$poor_mental_days, p = 0.8, list = FALSE)
 train_data <- rf_data[train_indices, ]
 test_data  <- rf_data[-train_indices, ]
+
+train_data <- na.omit(train_data)
+test_data <- na.omit(test_data)
 
 # Train Random Forest model
 rf_model <- randomForest(
