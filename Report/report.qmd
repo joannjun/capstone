@@ -81,47 +81,107 @@ $log(\mu_i) = \sum_{j=0}^{M}x_{ij}\beta_j$ $j=1...6$
 To test which variables were significant, we used Poisson regression. We chose this method because our outcome variable, poor mental health days, is count-based and non-negative. We checked assumptions for Poisson regression including independence and the equality of mean and variance. Due to observed overdispersion, we used a quasi-Poisson model to account for greater variance. All predictors were standardized before fitting the model. The Shapiro-Wilk test for residual normality yielded a p-value of (will add later), supporting the model's assumptions. The regression revealed that feelings of loneliness and lack of social support were the only statistically significant predictors. We visualized these results using a bar chart of percent change effects, which clearly highlighted the stronger social predictors.
 
 ```{r}
-# predictor variables 
+# Standardize predictors
 standardized_data <- mental_health_full |>
   mutate(across(
-    c(social_support, loneliness, crude_suicide, population, suicide_rate, provider_ratio),
+    c(provider_ratio, loneliness, social_support, suicide_rate),
     ~ scale(.)[, 1]
   ))
 
-# Fit the quasi-Poisson model with predictors
-quasi_model_std <- glm(
-  poor_mental_days ~ social_support + loneliness + crude_suicide +
-    population + suicide_rate + provider_ratio,
+# Fit Quasi-Poisson regression
+quasi_model_selected <- glm(
+  poor_mental_days ~ provider_ratio + loneliness + social_support + suicide_rate,
   data = standardized_data,
   family = quasipoisson(link = "log")
 )
 
-plot_data <- plot_data |>
+# Generate clean summary table with p-values
+clean_summary <- broom::tidy(quasi_model_selected, conf.int = TRUE) |>
+  filter(term != "(Intercept)") |>
   mutate(
-    Significance = ifelse(lower > 0, "Statistically Significant", "Not Significant")
+    `Percent Change in Poor Mental Health Days` = 100 * (exp(estimate) - 1),
+    `95% CI Lower` = 100 * (exp(conf.low) - 1),
+    `95% CI Upper` = 100 * (exp(conf.high) - 1),
+    Predictor = case_when(
+      term == "provider_ratio" ~ "Provider Ratio",
+      term == "loneliness" ~ "Loneliness (0–1 Scale)",
+      term == "social_support" ~ "Lack of Social Support (0–1 Scale)",
+      term == "suicide_rate" ~ "Suicide Rate"
+    )
+  ) |>
+  select(
+    Predictor,
+    `Percent Change in Poor Mental Health Days`,
+    `95% CI Lower`,
+    `95% CI Upper`,
+    `p.value`
   )
 
-# Plot
-ggplot(plot_data, aes(x = reorder(Predictor, effect), y = effect, fill = Significance)) +
-  geom_col() +
-  coord_flip() +
-  labs(
-    title = "What Predicts More Poor Mental Health Days?",
-    x = "",
-    y = "Estimated % Change in Poor Mental Health Days"
-  ) +
-  scale_fill_manual(values = c("Statistically Significant" = "steelblue", "Not Significant" = "gray80")) +
-  theme_minimal(base_size = 14) +
-  theme(
-    plot.title = element_text(face = "bold"),
-    plot.subtitle = element_text(margin = ggplot2::margin(b = 10)),
-    legend.position = "bottom"
-  )
+# Display the table
+print(clean_summary, n = Inf, width = Inf)
 
 ```
 
 ML
 Since we had a large sample, we decided to implement some machine learning to create predictive models. We selected Random Forest and XGBoost and evaluated them use RMSE. The lower the RMSE is the better the model is. 
+
+
+```{r}
+# Prepare data for modeling
+rf_data <- mental_health_full |>
+  select(
+    poor_mental_days, social_support, loneliness,
+    suicide_rate, crude_suicide, provider_ratio, population
+  )
+
+# Split into training and testing sets
+set.seed(42)
+train_indices <- createDataPartition(rf_data$poor_mental_days, p = 0.8, list = FALSE)
+train_data <- rf_data[train_indices, ]
+test_data  <- rf_data[-train_indices, ]
+
+train_data <- na.omit(train_data)
+test_data <- na.omit(test_data)
+
+# Train Random Forest model
+rf_model <- randomForest(
+  poor_mental_days ~ .,
+  data = train_data,
+  ntree = 500,
+  importance = TRUE
+)
+
+# Evaluate model
+predictions <- predict(rf_model, test_data)
+mse <- mean((predictions - test_data$poor_mental_days)^2)
+rmse <- sqrt(mse)
+
+cat(" Mean Squared Error (MSE):", round(mse, 3), "\n")
+cat(" Root Mean Squared Error (RMSE):", round(rmse, 3), "\n")
+
+# Variable importance
+var_imp <- importance(rf_model) |>
+  as.data.frame() |>
+  rownames_to_column("Variable") |>
+  mutate(`%IncRMSE` = `%IncMSE` / 2) |>
+  arrange(desc(`%IncRMSE`))
+
+# Plot variable importance
+ggplot(var_imp, aes(x = reorder(Variable, `%IncRMSE`), y = `%IncRMSE`)) +
+  geom_col(fill = "blue") +
+  coord_flip() +
+  labs(
+    title = "Variable Importance from Random Forest",
+    x = "Predictor",
+    y = "% Increase in RMSE"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    axis.title.y = element_text(margin = ggplot2::margin(r = 10)),
+    axis.title.x = element_text(margin = ggplot2::margin(t = 10))
+  )
+```
 
 ## Results
 
