@@ -157,14 +157,17 @@ Give your conclusions and summarize what you have learned with regards to your q
 
 
 -- SUMMARY OF RESEARCH -- 
-- brief overview of everything we found out
+Our analysis revealed that mental health provider density does not have a strong correlation with number of poor mental health days, challenging the common assumption that increasing the number of providers will lead to better mental health outcomes overall. This told us that there are other variables playing a bigger role here. Among the group tested, feelings of loneliness and lack of social and emotional support led as the strongest predictors of poor mental health days. Taking a further step with our findings, we also discovered an alarming pattern in Alaskan counties, pointing to disparities in mental health outcomes between their urban and rural regions. This new view reinforced the importance of the social determinants of health and helped direct our discussions and recommendations. When comparing predictive models, we found XGBoost to be a better predictive model, as it captued the non-linear relationships between all our variables better. 
 
 
 --LIMITATIONS--
 - more data (geographic like terrain,Distance to mental health provider, Transportation)
-Look into social (race, gender) and economic factors (income, insurance)
-maybe online mental health providerrs, internet access (online therapy)
-Data on quality of therapy/mental healthcare
+- Look into social (race, gender) and economic factors (income, insurance)
+- maybe online mental health providerrs, internet access (online therapy)
+- Data on quality of therapy/mental healthcare
+
+--RECOMMENDATIONS--
+
 
 ## Appendix: A quick tutorial
 
