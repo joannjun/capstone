@@ -69,7 +69,7 @@ One key component in addressing this issue is ensuring that individuals have acc
 This study aims to explore the relationship between the availability of mental health professionals and the mental well being of a population. Specifically, we ask: Does the number of mental health professionals per county affect the average number of poor mental health days? Understanding this relationship can help inform policy decisions, guide resource allocation, and identify areas most in need of improved mental health infrastructure, ultimately working toward better mental health outcomes at the community level.
 
 ## Data
-data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAAUCAYAAACnOeyiAAAAXklEQVR42mNgAIL///8zMYSGhjIDGYIMIiIMvECGMwMDN4M4kFEDUqIIZKwDMdSBjAsghj6Q8QPEMAAy/lOBoQekv4AYKkDGfgZeXl4RICOLQUtLiw3IUAJJMQIZ7AC2tU2tXJxOYgAAAABJRU5ErkJggg==
+
 ### About the Data
 We are using the 2025 County Health Rankings Dataset, which is collected by the University of Wisconsin Population Health Institute. The data ranks each county in all 50 states based on their health outcomes and variety of health factors. This dataset is widely used by policymakers and researchers to better understand and address factors influencing community and national health. Each row represents one U.S. county and its county-level metrics, and each column is a particular variable. We looked at 6 specific columns, focusing only on the raw values in that category. These were: mental health providers, poor mental health days, lack of social and emotional support, suicide rate, frequent mental distress, and county FIPS code. To standardize for population, we also engineered a variable of the proportion of Mental Health Providers per 100,000 people and used this to improve our visualizations.
 
@@ -508,8 +508,6 @@ county_health_clean$Poor_Mental_Health_Days_raw_value [is.na(county_health_clean
 
 ```
 
-
-# actual
 ```{r}
 
 # Replace NA in target variable with mean (or consider median if skewed)
@@ -570,7 +568,7 @@ preds <- predict(xgb_model, dtest)
 
 # RMSE
 rmse <- sqrt(mean((preds - test_label)^2))
-cat("Test RMSE:", rmse)
+#cat("Test RMSE:", rmse)
 
 ```
 
@@ -695,8 +693,6 @@ ggplot(perm_imp_df, aes(x = reorder(Feature, PercentIncreaseRMSE), y = PercentIn
 
 ```
 
-
-
 ## Recommendations
 
 Our analysis found no significant relationship between the number of mental health providers in a county and the amount of self-reported poor mental health days, suggesting that increasing the amount of providers in U.S. counties will not be enough to meaningfully reduce mental health challenges. We found this to be especially important to consider for rural counties, where many of their alarming trends stem not just from low provider headcounts but from gaps in social factors like isolation and loneliness. Based on these conclusions, we recommend that UHG/Optum consider implementing county-informed mental health care programs with a goal of prioritizing connectedness and accessibility, especially in rural regions. A sample program could include the following components:
@@ -719,7 +715,6 @@ Our analysis found no strong correlation between mental health provider density 
 ### Limitations
 
 A main limitation of our work is our use of aggregated, county-level data, so variation on an individual/personal level is unknown. Population-level associations might not accurately reflect what happens at the individual level, making it harder to design effective care strategies. Our dataset lacked variables on broader social determinants, as we mainly used lack of social and emotional support to draw conclusions on social implications. Variables like housing/food insecurity and trauma exposure were not included and because of that, we were not able to fully interpret the true care accessibility issues going on, on the national and county levels. Lacking mental health provider metrics also made our analysis of clinical variables slightly weaker. We were not able to assess the role of insurance rates in mental health outcomes, which could possibly direct future work into another key area as well. 
-
 
 ### Next Steps
 
