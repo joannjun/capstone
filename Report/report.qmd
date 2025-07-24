@@ -413,6 +413,54 @@ Since we had a large sample, we decided to implement some machine learning to cr
 
 Describe your results. This can include tables and plots showing your results, as well as text describing how your models worked and the appropriate interpretations of the relevant output. (Note: Don’t just write out the textbook interpretations of all model coefficients. Instead, interpret the output that is relevant for your question of interest that is framed in the introduction)
 
+<<<<<<< HEAD
+-- ADD PLOTS IN THIS SECTION --
+
+Alaska Scatterplot: Social & Emotional Support vs. Poor Mental Health Days
+
+After analyzing findings from the previous plot, which found that Alaskan counties (or boroughs/census areas) seem to have significantly higher suicide rates than other US counties, we did a more in-depth analysis with this scatterplot filtering for only Alaskan boroughs/census areas using two other key variables: poor mental health days and lack of social & emotional support (both raw value counts). We also color coded by region type, differentiating rural from urban regions.
+
+```{r}
+library(ggplot2)
+library(ggrepel)
+library(readr)
+
+county_health_mental <- read_csv("county_health_mental.csv")
+ak_df <- county_health_mental[county_health_mental$State_Abbreviation == "AK", ]
+unique(ak_df$Name)
+
+ak_df$Region_Type <- ifelse(
+  ak_df$Name %in% c(
+    "Anchorage Municipality",
+    "Fairbanks North Star Borough",
+    "Juneau City and Borough",
+    "Matanuska-Susitna Borough",
+    "Kenai Peninsula Borough",
+    "Ketchikan Gateway Borough",
+    "Sitka City and Borough"),
+  "Urban",
+  "Rural")
+
+ggplot(ak_df, aes(
+  x = as.numeric(Lack_of_Social_and_Emotional_Support_raw_value),
+  y = as.numeric(Poor_Mental_Health_Days_raw_value),
+  color = Region_Type)) +
+  geom_point(size = 3, alpha = 0.7) +
+  geom_text_repel(aes(label = Name), size = 2.5, max.overlaps = 20) +
+  geom_smooth(method = "lm", se = TRUE, color = "yellow") +
+  scale_color_manual(values = c("Urban" = "blue", "Rural" = "#097969")) +
+  labs(
+    title = "Alaska: Social & Emotional Support vs. Poor Mental Health Days",
+    subtitle = "Urban vs. Rural boroughs/census areas",
+    x = "Lack of Social & Emotional Support (%)",
+    y = "Poor Mental Health Days",
+    color = "Region Type") +
+  theme_minimal(base_size = 13)
+```
+
+The linear regression line captures the overall trend, where rural areas tend to fall above the trend line, telling us that for a given level of low social support, Alaskans in rural regions may experience more poor mental health days than expected. In contrast, urban areas clustering lower on both the x and y suggests that there may be disparities in mental health outcomes between Alaska's urban and rural regions. This secondary analysis highlights the social determinants of health and considers social support to be a more critical factor than we previously thought. 
+=======
+>>>>>>> 8b8438dd8f2ab9ef4377ca344f0d1f8bdf3b9576
 
 ```{r}
 # Prepare data for modeling
