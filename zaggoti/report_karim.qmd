@@ -1,0 +1,561 @@
+---
+title: "Title"
+author:
+  - Joann Jun
+  - Lily Fransen
+  - Karim Zaggoti
+date: "July 25, 2025"
+toc: true
+format:
+  html:
+    theme: cosmo
+    html-math-method: katex
+    self-contained: true
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+---
+
+```{r}
+
+library(readr)
+library(dplyr)
+library(Hmisc)
+library(corrplot)
+library(ggplot2)
+library(sf)
+library(tigris)
+library(plotly)
+library(rjson)
+library(data.table) 
+library(caret)     
+library(xgboost) 
+library(e1071)     
+library(cowplot)
+library(SHAPforxgboost)
+library(ggrepel)
+library(randomForest)
+
+```
+
+```{r, echo=FALSE, message=FALSE}
+
+county_health_clean <- read_csv("county_health_mental.csv") 
+county_health_clean <- rename(county_health_clean, fips=`5-digit_FIPS_Code`)
+
+map_data_final <- county_health_clean |>
+  select(fips, State_Abbreviation, County_FIPS_Code, State_FIPS_Code, Poor_Mental_Health_Days_raw_value,
+         Mental_Health_Providers_raw_value, Crude_suicide_rate, Suicides_raw_value, Feelings_of_Loneliness_raw_value, Population_raw_value, Population_raw_value, Lack_of_Social_and_Emotional_Support_raw_value)
+
+map_data_final |>
+  mutate(ratio_mental_pop = Population_raw_value/Mental_Health_Providers_raw_value)
+
+numeric_mental <- map_data_final |>
+  select(Poor_Mental_Health_Days_raw_value, Crude_suicide_rate, Suicides_raw_value, Feelings_of_Loneliness_raw_value, Population_raw_value, Mental_Health_Providers_raw_value, Lack_of_Social_and_Emotional_Support_raw_value)
+
+```
+
+## Introduction 
+
+In recent years, the mental health epidemic has become a growing public health concern. Factors such as social isolation, economic uncertainty, the stigmatization of mental illness, and limited access to care have all contributed to an increase in reported cases of anxiety, depression, and other mental health conditions. According to the Centers for Disease Control and Prevention (CDC), more than one in five adults in the United States live with a mental illness (insert citation). Poor mental health can significantly affect an individual’s quality of life, impacting emotional well-being, job performance, relationships, and physical health. Yet, according to the National Institutes of Health (NIH), only about half of those experiencing mental illness receive treatment (insert citation).
+
+This concerning gap between mental health needs and treatment raises an important question: does access to mental health care influence mental health outcomes?
+
+One key component in addressing this issue is ensuring that individuals have access to qualified mental health professionals. However, access to care is not evenly distributed across geographic regions. While some counties benefit from a dense network of providers, others face critical shortages, leaving residents without adequate support or timely treatment.
+
+This study aims to explore the relationship between the availability of mental health professionals and the mental well being of a population. Specifically, we ask: Does the number of mental health professionals per county affect the average number of poor mental health days? Understanding this relationship can help inform policy decisions, guide resource allocation, and identify areas most in need of improved mental health infrastructure, ultimately working toward better mental health outcomes at the community level.
+
+## Data
+
+### About the Data
+We are using the 2025 County Health Rankings Dataset, which is collected by the University of Wisconsin Population Health Institute. The data ranks each county in all 50 states based on their health outcomes and variety of health factors. This dataset is widely used by policymakers and researchers to better understand and address factors influencing community and national health. Each row represents one U.S. county and its county-level metrics, and each column is a particular variable. We looked at 6 specific columns, focusing only on the raw values in that category. These were: mental health providers, poor mental health days, lack of social and emotional support, suicide rate, frequent mental distress, and county FIPS code. To standardize for population, we also engineered a variable of the proportion of Mental Health Providers per 100,000 people and used this to improve our visualizations.
+
+### Exploratory Data Analysis (EDA)
+
+To explore the relationships between variables, we created a correlation plot of the numerical variables. The plot revealed a strong positive correlation between feelings of loneliness and lack of social and emotional support. In contrast, population showed little to no correlation with the other variables. Poor mental health days appeared to be moderately correlated with all other variables. Notably, the number of mental health providers showed a slight negative correlation with both poor mental health days and lack of social and emotional support.
+
+```{r}
+
+# correlation plot
+
+res <- cor(numeric_mental, use = "complete.obs")
+library(corrplot)
+corrplot(res, type = "upper", order = "hclust", 
+         tl.col = "black", tl.srt = 45, tl.cex = 0.8)
+
+```
+
+To better understand the spatial distribution of mental health challenges and resource availability, we created choropleth maps at the county level across the U.S. The first map shows the number of poor mental health days, revealing clear regional disparities—counties in the South report higher rates, whereas parts of the North Central region experience relatively fewer poor mental health days. The second map visualizes the population-to-provider ratio, an indicator of access to care. A higher ratio suggests fewer mental health providers relative to the population. 
+
+```{r, echo=FALSE, message=FALSE}
+
+# Poor mental health days
+
+# Ensure tigris doesn't cache old shapefiles
+options(tigris_use_cache = FALSE)
+
+# Load US counties shapefile
+counties_sf <- tigris::counties(cb = TRUE, class = "sf")
+
+# Ensure fips code is 5 characters
+map_data_final$fips <- sprintf("%05s", map_data_final$fips)
+
+# Merge your data with the shapefile
+map_data_sf <- counties_sf %>%
+  left_join(map_data_final, by = c("GEOID" = "fips"))
+
+# Plot and zoom to continental US
+ggplot(map_data_sf) +
+  geom_sf(aes(fill = Poor_Mental_Health_Days_raw_value), color = NA) +
+  scale_fill_viridis_c(name = "Poor Mental Health Days", 
+                       limits = c(0, 10), 
+                       option = "inferno") +
+  labs(title = "North Central Region of U.S has Fewer Poor Mental Health Days Compared to South Region") +
+  coord_sf(xlim = c(-125, -66), ylim = c(24, 50), expand = FALSE) +
+  theme_minimal()
+
+```
+
+```{r}
+# population to provider ratio
+
+# Compute ratio without capping
+map_data_final <- map_data_final |>
+  mutate(
+    fips = sprintf("%05s", fips),
+    ratioMP = Population_raw_value / Mental_Health_Providers_raw_value,
+    ratioMP = ifelse(is.finite(ratioMP), ratioMP, NA)  # Remove NaN/Inf
+  )
+
+# Fill in missing values with mean of ratioMP
+mean_ratio <- mean(map_data_final$ratioMP, na.rm = TRUE)
+
+map_data_final <- map_data_final |>
+  mutate(
+    ratioMP = ifelse(is.na(ratioMP), mean_ratio, ratioMP)
+  )
+
+# Load counties
+options(tigris_use_cache = FALSE)
+counties_sf <- tigris::counties(cb = TRUE, class = "sf")
+
+# Merge
+map_data_sf <- counties_sf %>%
+  left_join(map_data_final, by = c("GEOID" = "fips"))
+
+# Plot
+ggplot(map_data_sf) +
+  geom_sf(aes(fill = ratioMP), color = NA) +
+  scale_fill_viridis_c(
+    name = "Pop : Provider Ratio",
+    option = "inferno",
+    trans = "log"  # Log scale emphasizes differences
+  ) +
+  labs(title = "Southwest Region has greater population to provider ratio") +
+  coord_sf(xlim = c(-125, -66), ylim = c(24, 50), expand = FALSE) +
+  theme_minimal()
+
+```
+
+These map highlights that Southwestern counties, along with parts of Alaska, tend to have more limited access to providers. Together, these maps underscore regional inequities in mental health outcomes and access to services, suggesting that both geography and infrastructure play key roles in shaping community well-being.
+
+As part of our exploratory data analysis, we examined the relationship between provider access and suicide rates. While the overall trend shows only a slight association between these two variables, a few striking outliers emerge (primarily Alaskan counties) with both high suicide rates and high provider availability. This pattern suggests that some communities may have responded to elevated suicide risks by increasing access to mental health services as a preventative strategy, rather than the provider access itself being a direct deterrent of higher suicide rates.
+
+```{r}
+library(tidyverse)
+
+# Load and clean data
+raw_data <- read_csv("county_health_mental.csv", show_col_types = FALSE)
+raw_data <- raw_data[-1, ]
+
+#additional data 
+additional_data <- read_csv("analytic_data2025_v2.csv", show_col_types = FALSE)
+
+
+# Join both data sets by FIPS Code 
+mental_health_full <- raw_data |>
+  select(
+    fips             = `5-digit_FIPS_Code`,
+    state_abbr       = State_Abbreviation,
+    county_name      = Name,
+    poor_mental_days = Poor_Mental_Health_Days_raw_value,
+    suicide_rate     = Suicides_raw_value,
+    social_support   = Lack_of_Social_and_Emotional_Support_raw_value,
+    provider_ratio   = Ratio_of_population_to_mental_health_providers.,
+    loneliness       = Feelings_of_Loneliness_raw_value,
+    crude_suicide    = Crude_suicide_rate,
+    population       = Population_raw_value
+  ) |>
+  mutate(
+    fips = str_pad(fips, width = 5, side = "left", pad = "0")
+  ) |>
+  left_join(
+    additional_data |>
+      select(
+        fips = `5-digit FIPS Code`,
+        uninsured_adults            = `Uninsured Adults raw value`,
+        adult_smoking               = `Adult Smoking raw value`,
+        physical_inactivity         = `Physical Inactivity raw value`,
+        insufficient_sleep          = `Insufficient Sleep raw value`,
+        excessive_drinking          = `Excessive Drinking raw value`,
+        frequent_physical_distress  = `Frequent Physical Distress raw value`
+      ) |>
+      mutate(fips = str_pad(fips, width = 5, side = "left", pad = "0")),
+    by = "fips"
+  ) |>
+  filter(
+    !is.na(poor_mental_days),
+    !is.na(social_support),
+    !is.na(provider_ratio),
+    !is.na(uninsured_adults),
+    county_name != "United States"
+  ) |>
+  mutate(across(
+    c(
+      suicide_rate, poor_mental_days, social_support,
+      provider_ratio, loneliness, crude_suicide, population,
+      uninsured_adults, adult_smoking, physical_inactivity,
+      insufficient_sleep, excessive_drinking, frequent_physical_distress
+    ),
+    as.numeric
+  ))
+
+ggplot(mental_health_full, aes(x = provider_ratio, y = suicide_rate, color = social_support)) +
+  geom_point(alpha = 0.6, size = 2) +
+  scale_color_gradient(low = "skyblue", high = "darkred") +
+  geom_smooth(method = "lm", se = FALSE, color = "black", linetype = "dashed") +
+  geom_text_repel(
+    data = mental_health_full |> filter(suicide_rate > 25),
+    aes(label = county_name),
+    size = 2.8,
+    color = "gray30",
+    max.overlaps = 15
+  ) +
+  labs(
+    title = "As Provider Access Falls and Isolation Grows, Suicide Rates Rise",
+    x = "Population per Mental Health Provider",
+    y = "Suicide Rate (per 100,000)",
+    color = "Lack of Social Support"
+  ) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    plot.subtitle = element_text(margin = ggplot2::margin(t = 5, b = 10)), 
+    legend.position = "right"
+  )
+
+```
+
+#### Alaska
+
+As mentioned earlier, Alaska exhibited high suicide rates despite having relatively high provider availability. To better understand this paradox, we conducted a more focused analysis on Alaskan counties.
+
+In the choropleth maps below, we observe that many Alaskan counties report a high number of poor mental health days, despite having a greater density of mental health providers compared to other regions. This further supports the earlier finding that provider access alone may not be sufficient to mitigate mental health challenges, particularly in geographically isolated areas.
+
+```{r}
+# install.packages("patchwork")
+library(patchwork)
+library(tigris)
+library(dplyr)
+library(ggplot2)
+library(patchwork)
+
+# Map 1: Poor Mental Health Days
+plot_mental_health <- ggplot(map_data_sf) +
+  geom_sf(aes(fill = Poor_Mental_Health_Days_raw_value), color = NA) +
+  scale_fill_viridis_c(name = "Poor Mental Health Days", 
+                       limits = c(0, 10), 
+                       option = "inferno") +
+  labs(title = "Poor Mental Health Days by County in Alaska") +
+  coord_sf(xlim = c(-180, -125), ylim = c(50, 75), expand = FALSE) +
+  theme_minimal()
+
+# Map 2: Population to Provider Ratio
+plot_ratio <- ggplot(map_data_sf) +
+  geom_sf(aes(fill = ratioMP), color = NA) +
+  scale_fill_viridis_c(
+    name = "Pop : Provider Ratio",
+    option = "inferno",
+    trans = "log"
+  ) +
+  labs(title = "Population to Mental Health Provider Ratio by County in Alaska") +
+  coord_sf(xlim = c(-180, -125), ylim = c(50, 75), expand = FALSE) +
+  theme_minimal()
+
+# Combine side by side
+plot_mental_health + plot_ratio
+
+
+```
+
+Building on this, we created a scatterplot analyzing poor mental health days in relation to lack of social and emotional support which are two key indicators strongly correlated in our earlier analysis. We filtered specifically for Alaskan boroughs and census areas and color coded them by region type (urban vs. rural).
+
+```{r}
+library(ggplot2)
+library(ggrepel)
+library(readr)
+
+county_health_mental <- read_csv("county_health_mental.csv")
+ak_df <- county_health_mental[county_health_mental$State_Abbreviation == "AK", ]
+# unique(ak_df$Name)
+
+ak_df$Region_Type <- ifelse(
+  ak_df$Name %in% c(
+    "Anchorage Municipality",
+    "Fairbanks North Star Borough",
+    "Juneau City and Borough",
+    "Matanuska-Susitna Borough",
+    "Kenai Peninsula Borough",
+    "Ketchikan Gateway Borough",
+    "Sitka City and Borough"),
+  "Urban",
+  "Rural")
+
+ggplot(ak_df, aes(
+  x = as.numeric(Lack_of_Social_and_Emotional_Support_raw_value),
+  y = as.numeric(Poor_Mental_Health_Days_raw_value),
+  color = Region_Type)) +
+  geom_point(size = 3, alpha = 0.7) +
+  geom_text_repel(aes(label = Name), size = 2.5, max.overlaps = 20) +
+  geom_smooth(method = "lm", se = TRUE, color = "yellow") +
+  scale_color_manual(values = c("Urban" = "blue", "Rural" = "#097969")) +
+  labs(
+    title = "Alaska: Social & Emotional Support vs. Poor Mental Health Days",
+    subtitle = "Urban vs. Rural boroughs/census areas",
+    x = "Lack of Social & Emotional Support (%)",
+    y = "Poor Mental Health Days",
+    color = "Region Type") +
+  theme_minimal(base_size = 13)
+```
+
+The scatterplot shows a clear linear trend: as social support decreases, poor mental health days increase. Notably, rural regions tend to fall above the regression line, suggesting that even at similar levels of low social support, rural areas experience more poor mental health days than expected. In contrast, urban boroughs cluster toward the lower end of both axes, implying better outcomes.
+
+This regional disparity points to broader social determinants of health, such as community isolation, economic opportunity, and access to nonclinical support systems, that likely contribute to elevated mental health struggles in rural Alaska. It also raises important questions about the effectiveness and reach of mental health services in remote communities and highlights social and emotional support as a potentially more critical factor in improving mental health outcomes.
+
+## Methods
+
+### Quasi-Poisson Regression
+
+To test which variables were significant, we used Poisson regression. We chose this method because our outcome variable, poor mental health days, is count-based and non-negative. We checked assumptions for Poisson regression including independence and the equality of mean and variance. Due to observed overdispersion, we used a quasi-Poisson model to account for greater variance. All predictors were standardized before fitting the model. The Shapiro-Wilk test for residual normality yielded a p-value of 0.0009671, which at $\alpha = 0.05$ significance level supports the model's normality assumptions. The regression revealed that feelings of loneliness is the most statistically significant predictor. We visualized these results using a table of percent change effects, which clearly highlighted the stronger social predictors.
+
+We first fit a Poisson linear model because 'poor_mental_days' is a non-negative count variable. 
+
+
+$$
+
+\log(\mu_i) = \beta_0 + \beta_1x_1+ \beta_2x_2 + \beta_3x_3 + \beta_4x_4$
+
+$$
+
+where $x_i$ stands for provider ratio, feelings of loneliness, social support and suicide rate and $\mu_i = \mathbb E[Y_i]$ is the expected number of poor‑mental‑health days in count).
+
+#### Assumption checks
+
+* **Independence** – counties are administrative units and provide reasonable independence.  
+* **Dispersion** – the ratio of residual deviance to degrees of freedom was > 1, indicating over‑dispersion.  
+* **Residual normality** – A Shapiro–Wilk test on the model’s residuals gave a p-value of **0.009671**, which at $\alpha = 0.05$ significance level supports the model's normality assumptions.  
+
+Because of over‑dispersion we refit the model with a **quasi‑Poisson** model, which relaxes the dispersion requirement by estimating a dispersion parameter \(\phi\). All numeric predictors were **standardised (z‑scores)** to place coefficients on a common scale.
+
+#### Inference and interpretation  
+
+coefficients from the quasi‑Poisson fit were converted to **percent change in poor‑mental‑health days per 1‑SD increase** in each predictor. Significance was judged by 95% confidence intervals that excludes 0% change.
+
+```{r}
+# Standardize predictors
+standardized_data <- mental_health_full |>
+  mutate(across(
+    c(provider_ratio, loneliness, social_support, suicide_rate),
+    ~ scale(.)[, 1]
+  ))
+
+# Fit Quasi-Poisson regression
+quasi_model_selected <- glm(
+  poor_mental_days ~ provider_ratio + loneliness + social_support + suicide_rate,
+  data = standardized_data,
+  family = quasipoisson(link = "log")
+)
+
+# Generate clean summary table with p-values
+clean_summary <- broom::tidy(quasi_model_selected, conf.int = TRUE) |>
+  filter(term != "(Intercept)") |>
+  mutate(
+    `Percent Change in Poor Mental Health Days` = 100 * (exp(estimate) - 1),
+    `95% CI Lower` = 100 * (exp(conf.low) - 1),
+    `95% CI Upper` = 100 * (exp(conf.high) - 1),
+    Predictor = case_when(
+      term == "provider_ratio" ~ "Provider Ratio",
+      term == "loneliness" ~ "Loneliness (0–1 Scale)",
+      term == "social_support" ~ "Lack of Social Support (0–1 Scale)",
+      term == "suicide_rate" ~ "Suicide Rate"
+    )
+  ) |>
+  select(
+    Predictor,
+    `Percent Change in Poor Mental Health Days`,
+    `95% CI Lower`,
+    `95% CI Upper`,
+    `p.value`
+  )
+
+# Display the table
+print(clean_summary, n = Inf, width = Inf)
+
+```
+
+
+### 2 Machine‑learning models for prediction  
+
+Since we had a large sample, we decided to implement some machine learning to create predictive models. We selected Random Forest and XGBoost and evaluated them using RMSE. The lower the RMSE, the more accurate the predictions. 
+
+Since we had a large sample, we decided to implement some machine learning to create predictive models. We selected Random Forest and XGBoost and evaluated them use RMSE. The lower the RMSE is the better the model is. We also used % increase in RMSE to evaluate feature importance. The greater the % increase is, the greater the importance it has in the model.
+
+
+## Results
+
+Describe your results. This can include tables and plots showing your results, as well as text describing how your models worked and the appropriate interpretations of the relevant output. (Note: Don’t just write out the textbook interpretations of all model coefficients. Instead, interpret the output that is relevant for your question of interest that is framed in the introduction)
+
+<<<<<<< HEAD
+-- ADD PLOTS IN THIS SECTION --
+
+Alaska Scatterplot: Social & Emotional Support vs. Poor Mental Health Days
+
+After analyzing findings from the previous plot, which found that Alaskan counties (or boroughs/census areas) seem to have significantly higher suicide rates than other US counties, we did a more in-depth analysis with this scatterplot filtering for only Alaskan boroughs/census areas using two other key variables: poor mental health days and lack of social & emotional support (both raw value counts). We also color coded by region type, differentiating rural from urban regions.
+
+```{r}
+library(ggplot2)
+library(ggrepel)
+library(readr)
+
+county_health_mental <- read_csv("county_health_mental.csv")
+ak_df <- county_health_mental[county_health_mental$State_Abbreviation == "AK", ]
+unique(ak_df$Name)
+
+ak_df$Region_Type <- ifelse(
+  ak_df$Name %in% c(
+    "Anchorage Municipality",
+    "Fairbanks North Star Borough",
+    "Juneau City and Borough",
+    "Matanuska-Susitna Borough",
+    "Kenai Peninsula Borough",
+    "Ketchikan Gateway Borough",
+    "Sitka City and Borough"),
+  "Urban",
+  "Rural")
+
+ggplot(ak_df, aes(
+  x = as.numeric(Lack_of_Social_and_Emotional_Support_raw_value),
+  y = as.numeric(Poor_Mental_Health_Days_raw_value),
+  color = Region_Type)) +
+  geom_point(size = 3, alpha = 0.7) +
+  geom_text_repel(aes(label = Name), size = 2.5, max.overlaps = 20) +
+  geom_smooth(method = "lm", se = TRUE, color = "yellow") +
+  scale_color_manual(values = c("Urban" = "blue", "Rural" = "#097969")) +
+  labs(
+    title = "Alaska: Social & Emotional Support vs. Poor Mental Health Days",
+    subtitle = "Urban vs. Rural boroughs/census areas",
+    x = "Lack of Social & Emotional Support (%)",
+    y = "Poor Mental Health Days",
+    color = "Region Type") +
+  theme_minimal(base_size = 13)
+```
+
+The linear regression line captures the overall trend, where rural areas tend to fall above the trend line, telling us that for a given level of low social support, Alaskans in rural regions may experience more poor mental health days than expected. In contrast, urban areas clustering lower on both the x and y suggests that there may be disparities in mental health outcomes between Alaska's urban and rural regions. This secondary analysis highlights the social determinants of health and considers social support to be a more critical factor than we previously thought. 
+=======
+>>>>>>> 8b8438dd8f2ab9ef4377ca344f0d1f8bdf3b9576
+
+```{r}
+# Prepare data for modeling
+rf_data <- mental_health_full |>
+  select(
+    poor_mental_days, social_support, loneliness,
+    suicide_rate, crude_suicide, provider_ratio, population
+  )
+
+# Split into training and testing sets
+set.seed(42)
+train_indices <- createDataPartition(rf_data$poor_mental_days, p = 0.8, list = FALSE)
+train_data <- rf_data[train_indices, ]
+test_data  <- rf_data[-train_indices, ]
+
+train_data <- na.omit(train_data)
+test_data <- na.omit(test_data)
+
+# Train Random Forest model
+rf_model <- randomForest(
+  poor_mental_days ~ .,
+  data = train_data,
+  ntree = 500,
+  importance = TRUE
+)
+
+# Evaluate model
+predictions <- predict(rf_model, test_data)
+mse <- mean((predictions - test_data$poor_mental_days)^2)
+rmse <- sqrt(mse)
+
+cat(" Mean Squared Error (MSE):", round(mse, 3), "\n")
+cat(" Root Mean Squared Error (RMSE):", round(rmse, 3), "\n")
+
+# Variable importance
+var_imp <- importance(rf_model) |>
+  as.data.frame() |>
+  rownames_to_column("Variable") |>
+  mutate(`%IncRMSE` = `%IncMSE` / 2) |>
+  arrange(desc(`%IncRMSE`))
+
+# Plot variable importance
+ggplot(var_imp, aes(x = reorder(Variable, `%IncRMSE`), y = `%IncRMSE`)) +
+  geom_col(fill = "blue") +
+  coord_flip() +
+  labs(
+    title = "Variable Importance from Random Forest",
+    x = "Predictor",
+    y = "% Increase in RMSE"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold"),
+    axis.title.y = element_text(margin = ggplot2::margin(r = 10)),
+    axis.title.x = element_text(margin = ggplot2::margin(t = 10))
+  )
+```
+
+## Recommendations
+
+Our analysis found no significant relationship between the number of mental health providers in a county and the amount of self-reported poor mental health days, suggesting that increasing the amount of providers in U.S. counties will not be enough to meaningfully reduce mental health challenges. We found this to be especially important to consider for rural counties, where many of their alarming trends stem not just from low provider headcounts but from gaps in social factors like isolation and loneliness. Based on these conclusions, we recommend that UHG/Optum consider implementing county-informed mental health care programs with a goal of prioritizing connectedness and accessibility, especially in rural regions. A sample program could include the following components:
+
+1. Partner with particular state and local governments to improve broadband access (subsidized mobile hotspots, data plans, etc.). Many rural communities have the opportunity to utilize telehealth platforms but lack the internet infrastructure to support it. 
+
+2. Invest in virtual therapy platforms that can connect individuals to licensed mental health providers. In-person care is limited or sometimes unavailable in rural regions for a variety of reasons, making this method of care critical for many in these communities.
+
+3. Develop community peer-support networks, to be paired with virtual therapy. Our findings show that connectedness and social support are some of the strongest predictors of a good mental state. Community leaders and members could stand to provide social and emotional support in meetings and organized events, virtually or in-person. 
+
+Our recommendations shift the focus from solving mental health problems with only clinical interventions to a community-based, social approach. Planning investments and developments in these areas keeps the focus and support on the individual. This gives UHG/Optum the opportunity to better support these notably underserved areas and make a real impact, where many traditional, in-person models have not been enough.
+
+
+## Discussion
+
+### Research Summary
+
+Our analysis found no strong correlation between mental health provider density and number of poor mental health days, challenging the common assumption that increasing the number of clinical providers will lead to better mental health outcomes overall. This told us that there are other variables playing a bigger role here. Among the group tested, feelings of loneliness and lack of social and emotional support led as the strongest predictors of poor mental health days. Taking a further step with our findings, we discovered an alarming pattern in Alaskan counties, pointing to disparities in mental health outcomes between their urban and rural regions. This new view reinforced the importance of the social determinants of health and helped direct our discussions and recommendations. When comparing predictive models, we found XGBoost to be a better predictive model, as it captured the non-linear relationships between all our variables better. This suggests that more advanced machine learning methods could offer a better understanding of complex subjects like mental health.
+
+### Limitations
+
+A main limitation of our work is our use of aggregated, county-level data, so variation on an individual/personal level is unknown. Population-level associations might not accurately reflect what happens at the individual level, making it harder to design effective care strategies. Our dataset lacked variables on broader social determinants, as we mainly used lack of social and emotional support to draw conclusions on social implications. Variables like housing/food insecurity and trauma exposure were not included and because of that, we were not able to fully interpret the true care accessibility issues going on, on the national and county levels. Lacking mental health provider metrics also made our analysis of clinical variables slightly weaker. We were not able to assess the role of insurance rates in mental health outcomes, which could possibly direct future work into another key area as well. 
+
+
+### Next Steps
+
+For future work, we believe using geographical factors, behavioral health indicators, and mental health provider metrics will be useful. Considering social (race, gender) and economic (income, insurance rates) factors could make for an even more valuable and insightful analysis. Exploring longitudinal data trends would also be useful when adopting machine learning for this type of analysis, that way patterns can be localized confidently in particular areas of interest. Future studies should seek individual-level data as well, to interpret the importance of personal/life experience and risk factors in order to account for how perceived support, discrimination, and stigma can affect mental health outcomes. Listening to individual perspectives and narratives allows for more accurate/empathetic understanding of disparities in mental health outcomes across the nation. Taking these future steps would open a door to even stronger clinical/behavioral health recommendations, all with the end goal of improving mental health outcomes for all people.
+
+## Appendix
+
+
+## Sources
+
+**(Feel free to remove this section when you submit)**
+
