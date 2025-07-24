@@ -160,8 +160,6 @@ ggplot(mental_health_full, aes(x = provider_ratio, y = suicide_rate, color = soc
   )
 ```
 
-### Correlation Plot
-
 We created a correlation plot of the numerical variables.
 
 ```{r}
@@ -176,8 +174,6 @@ corrplot(res, type = "upper", order = "hclust",
 ```
 
 From this we were able to see that feelings of loneliness and lack of social and emotional support had a high positive correlation with each other. We also saw that population had no correlation with the other variables. Poor mental health days seem to have a correlation with all variables. Mental health providers has a slight negative correlation with poor mental health days and lack of social and emotional support.
-
-### Choropleth Map
 
 ```{r}
 
@@ -247,8 +243,45 @@ ggplot(map_data_sf) +
   coord_sf(xlim = c(-125, -66), ylim = c(24, 50), expand = FALSE) +
   theme_minimal()
 
-````
+```
 
+### Alaska EDA
+
+```{r}
+# install.packages("patchwork")
+library(patchwork)
+library(tigris)
+library(dplyr)
+library(ggplot2)
+library(patchwork)
+
+# Map 1: Poor Mental Health Days
+plot_mental_health <- ggplot(map_data_sf) +
+  geom_sf(aes(fill = Poor_Mental_Health_Days_raw_value), color = NA) +
+  scale_fill_viridis_c(name = "Poor Mental Health Days", 
+                       limits = c(0, 10), 
+                       option = "inferno") +
+  labs(title = "Poor Mental Health Days by County") +
+  coord_sf(xlim = c(-180, -125), ylim = c(50, 75), expand = FALSE) +
+  theme_minimal()
+
+# Map 2: Population to Provider Ratio
+plot_ratio <- ggplot(map_data_sf) +
+  geom_sf(aes(fill = ratioMP), color = NA) +
+  scale_fill_viridis_c(
+    name = "Pop : Provider Ratio",
+    option = "inferno",
+    trans = "log"
+  ) +
+  labs(title = "Population to Mental Health Provider Ratio by County") +
+  coord_sf(xlim = c(-180, -125), ylim = c(50, 75), expand = FALSE) +
+  theme_minimal()
+
+# Combine side by side
+plot_mental_health + plot_ratio
+
+
+```
 
 ## Methods
 
@@ -344,6 +377,8 @@ Describe your results. This can include tables and plots showing your results, a
 
 Alaska Scatterplot: Social & Emotional Support vs. Poor Mental Health Days
 
+After analyzing findings from the previous plot, which found that Alaskan counties (or boroughs/census areas) seem to have significantly higher suicide rates than other US counties, we did a more in-depth analysis with this scatterplot filtering for only Alaskan boroughs/census areas using two other key variables: poor mental health days and lack of social & emotional support (both raw value counts). We also color coded by region type, differentiating rural from urban regions.
+
 ```{r}
 ak_df <- county_health_mental[county_health_mental$State_Abbreviation == "AK", ]
 unique(ak_df$Name)
@@ -377,7 +412,7 @@ ggplot(ak_df, aes(
   theme_minimal(base_size = 13)
 ```
 
-When evaluating the 2 models, Random Forest and XGBoost, we saw that the RMSE value for XGBoost was 0.443 which was slightly lower than the RMSE for Random Forest, which was 0.449 This meant that the XGBoost model has a greater accuracy and predictive power compared to Random Forest. We also saw that in both models feelings of loneliness and social and emotional support were the 2 top features in the model.
+The linear regression line captures the overall trend, where rural areas tend to fall above the trend line, telling us that for a given level of low social support, Alaskans in rural regions may experience more poor mental health days than expected. In contrast, urban areas clustering lower on both the x and y suggests that there may be disparities in mental health outcomes between Alaska's urban and rural regions. This secondary analysis highlights the social determinants of health and considers social support to be a more critical factor than we previously thought. 
 
 ```{r}
 # Prepare data for modeling
