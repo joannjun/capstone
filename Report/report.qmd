@@ -162,7 +162,6 @@ ggplot(map_data_sf) +
 
 These map highlights that Southwestern counties, along with parts of Alaska, tend to have more limited access to providers. Together, these maps underscore regional inequities in mental health outcomes and access to services, suggesting that both geography and infrastructure play key roles in shaping community well-being.
 
-
 As part of our exploratory data analysis, we examined the relationship between provider access and suicide rates. While the overall trend shows only a slight association between these two variables, a few striking outliers emerge (primarily Alaskan counties) with both high suicide rates and high provider availability. This pattern suggests that some communities may have responded to elevated suicide risks by increasing access to mental health services as a preventative strategy, rather than the provider access itself being a direct deterrent of higher suicide rates.
 
 ```{r}
@@ -250,7 +249,11 @@ ggplot(mental_health_full, aes(x = provider_ratio, y = suicide_rate, color = soc
 
 ```
 
-### EDA
+#### Alaska
+
+As mentioned earlier, Alaska exhibited high suicide rates despite having relatively high provider availability. To better understand this paradox, we conducted a more focused analysis on Alaskan counties.
+
+In the choropleth maps below, we observe that many Alaskan counties report a high number of poor mental health days, despite having a greater density of mental health providers compared to other regions. This further supports the earlier finding that provider access alone may not be sufficient to mitigate mental health challenges, particularly in geographically isolated areas.
 
 ```{r}
 # install.packages("patchwork")
@@ -266,7 +269,7 @@ plot_mental_health <- ggplot(map_data_sf) +
   scale_fill_viridis_c(name = "Poor Mental Health Days", 
                        limits = c(0, 10), 
                        option = "inferno") +
-  labs(title = "Poor Mental Health Days by County") +
+  labs(title = "Poor Mental Health Days by County in Alaska") +
   coord_sf(xlim = c(-180, -125), ylim = c(50, 75), expand = FALSE) +
   theme_minimal()
 
@@ -278,7 +281,7 @@ plot_ratio <- ggplot(map_data_sf) +
     option = "inferno",
     trans = "log"
   ) +
-  labs(title = "Population to Mental Health Provider Ratio by County") +
+  labs(title = "Population to Mental Health Provider Ratio by County in Alaska") +
   coord_sf(xlim = c(-180, -125), ylim = c(50, 75), expand = FALSE) +
   theme_minimal()
 
@@ -288,9 +291,7 @@ plot_mental_health + plot_ratio
 
 ```
 
-### Alaska Scatterplot: Social & Emotional Support vs. Poor Mental Health Days
-
-After analyzing findings from the previous plot, which found that Alaskan counties (or boroughs/census areas) seem to have significantly higher suicide rates than other US counties, we did a more in-depth analysis with this scatterplot filtering for only Alaskan boroughs/census areas using two other key variables: poor mental health days and lack of social & emotional support (both raw value counts). We also color coded by region type, differentiating rural from urban regions.
+Building on this, we created a scatterplot analyzing poor mental health days in relation to lack of social and emotional support which are two key indicators strongly correlated in our earlier analysis. We filtered specifically for Alaskan boroughs and census areas and color coded them by region type (urban vs. rural).
 
 ```{r}
 library(ggplot2)
@@ -330,15 +331,11 @@ ggplot(ak_df, aes(
   theme_minimal(base_size = 13)
 ```
 
-The linear regression line captures the overall trend, where rural areas tend to fall above the trend line, telling us that for a given level of low social support, Alaskans in rural regions may experience more poor mental health days than expected. In contrast, urban areas clustering lower on both the x and y suggests that there may be disparities in mental health outcomes between Alaska's urban and rural regions. This secondary analysis highlights the social determinants of health and considers social support to be a more critical factor than we previously thought. 
+The scatterplot shows a clear linear trend: as social support decreases, poor mental health days increase. Notably, rural regions tend to fall above the regression line, suggesting that even at similar levels of low social support, rural areas experience more poor mental health days than expected. In contrast, urban boroughs cluster toward the lower end of both axes, implying better outcomes.
 
-
+This regional disparity points to broader social determinants of health, such as community isolation, economic opportunity, and access to nonclinical support systems, that likely contribute to elevated mental health struggles in rural Alaska. It also raises important questions about the effectiveness and reach of mental health services in remote communities and highlights social and emotional support as a potentially more critical factor in improving mental health outcomes.
 
 ## Methods
-
-### 1 Statistical‐inference model  
-
-Describe the modeling techniques you chose, their assumptions, justifications for why they are appropriate for the problem, and how you're comparing/evaluating the different methods.
 
 ### Quasi-Poisson Regression
 
@@ -346,9 +343,12 @@ To test which variables were significant, we used Poisson regression. We chose t
 
 We first fit a Poisson linear model because 'poor_mental_days' is a non-negative count variable. 
 
-Log Link:
 
-$\log(\mu_i) = \beta_0 + \beta_1x_1+ \beta_2x_2 + \beta_3x_3 + \beta_4x_4$
+$$
+
+\log(\mu_i) = \beta_0 + \beta_1x_1+ \beta_2x_2 + \beta_3x_3 + \beta_4x_4$
+
+$$
 
 where $x_i$ stands for provider ratio, feelings of loneliness, social support and suicide rate and $\mu_i = \mathbb E[Y_i]$ is the expected number of poor‑mental‑health days in count).
 
