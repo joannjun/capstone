@@ -215,6 +215,14 @@ clean_summary <- broom::tidy(quasi_model_selected, conf.int = TRUE) |>
 
 # Step 4: Display the table
 print(clean_summary, n = Inf, width = Inf)
+
+# Step 5: Shapiro–Wilk test for normality of deviance residuals
+resid_dev   <- residuals(quasi_model_selected, type = "deviance")
+shapiro_res <- shapiro.test(resid_dev)
+
+# Print full test results
+shapiro_res
+
 ```
 
 ###Quasi Possion Joint 
