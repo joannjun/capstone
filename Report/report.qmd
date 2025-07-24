@@ -68,6 +68,7 @@ This study aims to explore the relationship between the availability of mental h
 
 ## Data
 
+### About the Data
 We are using the 2025 County Health Rankings Dataset, which is collected by the University of Wisconsin Population Health Institute. The data ranks each county in all 50 states based on their health outcomes and variety of health factors. This dataset is widely used by policymakers and researchers to better understand and address factors influencing community and national health. Each row represents one U.S. county and its county-level metrics, and each column is a particular variable. We looked at 6 specific columns, focusing only on the raw values in that category. These were: mental health providers, poor mental health days, lack of social and emotional support, suicide rate, frequent mental distress, and county FIPS code. To standardize for population, we also engineered a variable of the proportion of Mental Health Providers per 100,000 people and used this to improve our visualizations.
 
 As part of our exploratory data analysis, we examined the relationship between provider access and suicide rates. While the overall trend shows only a slight association between these two variables, a few striking outliers emerge (primarily Alaskan counties) with both high suicide rates and high provider availability. This pattern suggests that some communities may have responded to elevated suicide risks by increasing access to mental health services as a preventative strategy, rather than the provider access itself being a direct deterrent of higher suicide rates.
@@ -100,9 +101,13 @@ ggplot(mental_health_full, aes(x = provider_ratio, y = suicide_rate, color = soc
   )
 ```
 
+### Correlation Plot
+
 We created a correlation plot of the numerical variables.
 
 ```{r}
+
+# correlation plot
 
 res <- cor(numeric_mental, use = "complete.obs")
 library(corrplot)
@@ -112,6 +117,79 @@ corrplot(res, type = "upper", order = "hclust",
 ```
 
 From this we were able to see that feelings of loneliness and lack of social and emotional support had a high positive correlation with each other. We also saw that population had no correlation with the other variables. Poor mental health days seem to have a correlation with all variables. Mental health providers has a slight negative correlation with poor mental health days and lack of social and emotional support.
+
+### Choropleth Map
+
+```{r}
+
+# Poor mental health days
+
+# Ensure tigris doesn't cache old shapefiles
+options(tigris_use_cache = FALSE)
+
+# Load US counties shapefile
+counties_sf <- tigris::counties(cb = TRUE, class = "sf")
+
+# Ensure fips code is 5 characters
+map_data_final$fips <- sprintf("%05s", map_data_final$fips)
+
+# Merge your data with the shapefile
+map_data_sf <- counties_sf %>%
+  left_join(map_data_final, by = c("GEOID" = "fips"))
+
+# Plot and zoom to continental US
+ggplot(map_data_sf) +
+  geom_sf(aes(fill = Poor_Mental_Health_Days_raw_value), color = NA) +
+  scale_fill_viridis_c(name = "Poor Mental Health Days", 
+                       limits = c(0, 10), 
+                       option = "inferno") +
+  labs(title = "Poor Mental Health Days by County") +
+  coord_sf(xlim = c(-125, -66), ylim = c(24, 50), expand = FALSE) +
+  theme_minimal()
+
+```
+
+```{r}
+# population to provider ratio
+
+# Compute ratio without capping
+map_data_final <- map_data_final |>
+  mutate(
+    fips = sprintf("%05s", fips),
+    ratioMP = Population_raw_value / Mental_Health_Providers_raw_value,
+    ratioMP = ifelse(is.finite(ratioMP), ratioMP, NA)  # Remove NaN/Inf
+  )
+
+# Fill in missing values with mean of ratioMP
+mean_ratio <- mean(map_data_final$ratioMP, na.rm = TRUE)
+
+map_data_final <- map_data_final |>
+  mutate(
+    ratioMP = ifelse(is.na(ratioMP), mean_ratio, ratioMP)
+  )
+
+# Load counties
+options(tigris_use_cache = FALSE)
+counties_sf <- tigris::counties(cb = TRUE, class = "sf")
+
+# Merge
+map_data_sf <- counties_sf %>%
+  left_join(map_data_final, by = c("GEOID" = "fips"))
+
+# Plot
+ggplot(map_data_sf) +
+  geom_sf(aes(fill = ratioMP), color = "black", size = 0.01) +
+  scale_fill_viridis_c(
+    name = "Pop : Provider Ratio",
+    option = "inferno",
+    trans = "log"  # Log scale emphasizes differences
+  ) +
+  labs(title = "Population to Mental Health Provider Ratio by County") +
+  coord_sf(xlim = c(-125, -66), ylim = c(24, 50), expand = FALSE) +
+  theme_minimal()
+
+````
+
 
 ## Methods
 
@@ -240,11 +318,7 @@ ggplot(ak_df, aes(
   theme_minimal(base_size = 13)
 ```
 
-mention this
- - There was no significant relationship between proportion/ratio of population to mental health providers
- - not a not enough mental health providers problem --> implies it could be a social problem since lack of social and emotional support and feelings of loneliness also top predictors
-
-When evaluating the 2 models, Random Forest and XGBoost, we saw that the RMSE value for XGBoost was 0.44317 which was slightly lower than the RMSE for Random Forest, which was _____. This meant that the XGBoost model has a greater accuracy and predictive power compared to Random Forest.
+When evaluating the 2 models, Random Forest and XGBoost, we saw that the RMSE value for XGBoost was 0.443 which was slightly lower than the RMSE for Random Forest, which was 0.449 This meant that the XGBoost model has a greater accuracy and predictive power compared to Random Forest. We also saw that in both models feelings of loneliness and social and emotional support were the 2 top features in the model.
 
 ```{r}
 # Prepare data for modeling
@@ -302,8 +376,6 @@ ggplot(var_imp, aes(x = reorder(Variable, `%IncRMSE`), y = `%IncRMSE`)) +
     axis.title.x = element_text(margin = ggplot2::margin(t = 10))
   )
 ```
-
-
 
 ## Recommendations
 
