@@ -343,12 +343,7 @@ To test which variables were significant, we used Poisson regression. We chose t
 
 We first fit a Poisson linear model because 'poor_mental_days' is a non-negative count variable. 
 
-
-$$
-
-\log(\mu_i) = \beta_0 + \beta_1x_1+ \beta_2x_2 + \beta_3x_3 + \beta_4x_4$
-
-$$
+$\log(\mu_i) = \beta_0 + \beta_1x_1+ \beta_2x_2 + \beta_3x_3 + \beta_4x_4$
 
 where $x_i$ stands for provider ratio, feelings of loneliness, social support and suicide rate and $\mu_i = \mathbb E[Y_i]$ is the expected number of poor‑mental‑health days in count).
 
