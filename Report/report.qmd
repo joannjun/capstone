@@ -119,21 +119,19 @@ From this we were able to see that feelings of loneliness and lack of social and
 
 Describe the modeling techniques you chose, their assumptions, justifications for why they are appropriate for the problem, and how you're comparing/evaluating the different methods.
 
-<<<<<<< HEAD
-
 ### Quasi-Poisson Regression
 
-To test which variables were significant, we used Poisson regression. We chose this method because our outcome variable, poor mental health days, is count-based and non-negative. We checked assumptions for Poisson regression including independence and the equality of mean and variance. Due to observed overdispersion, we used a quasi-Poisson model to account for greater variance. All predictors were standardized before fitting the model. The Shapiro-Wilk test for residual normality yielded a p-value of (will add later), which at $\alpha = 0.05$ significance level supports the model's assumptions. The regression revealed that feelings of loneliness and lack of social support were the only statistically significant predictors. We visualized these results using a bar chart of percent change effects, which clearly highlighted the stronger social predictors.
-=======
+To test which variables were significant, we used Poisson regression. We chose this method because our outcome variable, poor mental health days, is count-based and non-negative. We checked assumptions for Poisson regression including independence and the equality of mean and variance. Due to observed overdispersion, we used a quasi-Poisson model to account for greater variance. All predictors were standardized before fitting the model. The Shapiro-Wilk test for residual normality yielded a p-value of 0.0009671, which at $\alpha = 0.05$ significance level supports the model's normality assumptions. The regression revealed that feelings of loneliness and lack of social support were the only statistically significant predictors. We visualized these results using a bar chart of percent change effects, which clearly highlighted the stronger social predictors.
+
 We first fit a Poisson linear model because 'poor_mental_days' is a non-negative count variable. 
 
 Log Link:
 
 \[
-\log(\mu_i) \;=\; \beta_0 + \beta_1\,\text{provider\_ratio}_i
+\log(\mu_i) \;=\; \beta_0 + \beta_1\,\text{provider_ratio}_i
                  + \beta_2\,\text{loneliness}_i
-                 + \beta_3\,\text{social\_support}_i
-                 + \beta_4\,\text{suicide\_rate}_i ,
+                 + \beta_3\,\text{social_support}_i
+                 + \beta_4\,\text{suicide_rate}_i ,
 \]
 
 where \(\mu_i = \mathbb E[Y_i]\) is the expected number of poor‑mental‑health days in county.\(i\).
@@ -300,10 +298,8 @@ A main limitation of our work is our use of aggregated, county-level data, so va
 
 For future work, we believe using geographical factors, behavioral health indicators, and mental health provider metrics will be useful. Considering social (race, gender) and economic (income, insurance rates) factors could make for an even more valuable and insightful analysis. Exploring longitudinal data trends would also be useful when adopting machine learning for this type of analysis, that way patterns can be localized confidently in particular areas of interest. Future studies should seek individual-level data as well, to interpret the importance of personal/life experience and risk factors in order to account for how perceived support, discrimination, and stigma can affect mental health outcomes. Listening to individual perspectives and narratives allows for more accurate/empathetic understanding of disparities in mental health outcomes across the nation. Taking these future steps would open a door to even stronger clinical/behavioral health recommendations, all with the end goal of improving mental health outcomes for all people.
 
+## Appendix
 
-
-
-## Appendix: A quick tutorial
 
 ## Sources
 
