@@ -19,6 +19,43 @@ execute:
 
 ---
 
+```{r}
+
+library(readr)
+library(dplyr)
+library(Hmisc)
+library(corrplot)
+library(ggplot2)
+library(sf)
+library(tigris)
+library(plotly)
+library(rjson)
+library(data.table) 
+library(caret)     
+library(xgboost) 
+library(e1071)     
+library(cowplot)
+library(SHAPforxgboost)
+
+```
+
+```{r, echo=FALSE, message=FALSE}
+
+county_health_clean <- read_csv("county_health_mental.csv") 
+county_health_clean <- rename(county_health_clean, fips=`5-digit_FIPS_Code`)
+
+map_data_final <- county_health_clean |>
+  select(fips, State_Abbreviation, County_FIPS_Code, State_FIPS_Code, Poor_Mental_Health_Days_raw_value,
+         Mental_Health_Providers_raw_value, Crude_suicide_rate, Suicides_raw_value, Feelings_of_Loneliness_raw_value, Population_raw_value, Population_raw_value, Lack_of_Social_and_Emotional_Support_raw_value)
+
+map_data_final |>
+  mutate(ratio_mental_pop = Population_raw_value/Mental_Health_Providers_raw_value)
+
+numeric_mental <- map_data_final |>
+  select(Poor_Mental_Health_Days_raw_value, Crude_suicide_rate, Suicides_raw_value, Feelings_of_Loneliness_raw_value, Population_raw_value, Mental_Health_Providers_raw_value, Lack_of_Social_and_Emotional_Support_raw_value)
+
+```
+
 ## Introduction 
 
 In recent years, the mental health epidemic has become a growing public health concern. Factors such as social isolation, economic uncertainty, the stigmatization of mental illness, and limited access to care have all contributed to an increase in reported cases of anxiety, depression, and other mental health conditions. According to the Centers for Disease Control and Prevention (CDC), more than one in five adults in the United States live with a mental illness (insert citation). Poor mental health can significantly affect an individual’s quality of life, impacting emotional well-being, job performance, relationships, and physical health. Yet, according to the National Institutes of Health (NIH), only about half of those experiencing mental illness receive treatment (insert citation).
@@ -30,8 +67,6 @@ One key component in addressing this issue is ensuring that individuals have acc
 This study aims to explore the relationship between the availability of mental health professionals and the mental well being of a population. Specifically, we ask: Does the number of mental health professionals per county affect the average number of poor mental health days? Understanding this relationship can help inform policy decisions, guide resource allocation, and identify areas most in need of improved mental health infrastructure, ultimately working toward better mental health outcomes at the community level.
 
 ## Data
-
-Describe the data you’re using in detail, where you accessed it, along with relevant exploratory data analysis (EDA). You should also include descriptions of any relevant data pre-processing steps (e.g., whether you consider specific observations, create any meaningful features, etc.---but don't mention minor steps like column type conversion, filtering out unnecessary rows)
 
 We are using the 2025 County Health Rankings Dataset, which is collected by the University of Wisconsin Population Health Institute. The data ranks each county in all 50 states based on their health outcomes and variety of health factors. This dataset is widely used by policymakers and researchers to better understand and address factors influencing community and national health. Each row represents one U.S. county and its county-level metrics, and each column is a particular variable. We looked at 6 specific columns, focusing only on the raw values in that category. These were: mental health providers, poor mental health days, lack of social and emotional support, suicide rate, frequent mental distress, and county FIPS code. To standardize for population, we also engineered a variable of the proportion of Mental Health Providers per 100,000 people and used this to improve our visualizations.
 
@@ -65,20 +100,27 @@ ggplot(mental_health_full, aes(x = provider_ratio, y = suicide_rate, color = soc
   )
 ```
 
+We created a correlation plot of the numerical variables.
+
+```{r}
+
+res <- cor(numeric_mental, use = "complete.obs")
+library(corrplot)
+corrplot(res, type = "upper", order = "hclust", 
+         tl.col = "black", tl.srt = 45, tl.cex = 0.8)
+
+```
+
+From this we were able to see that feelings of loneliness and lack of social and emotional support had a high positive correlation with each other. We also saw that population had no correlation with the other variables. Poor mental health days seem to have a correlation with all variables. Mental health providers has a slight negative correlation with poor mental health days and lack of social and emotional support.
+
 ## Methods
 
 Describe the modeling techniques you chose, their assumptions, justifications for why they are appropriate for the problem, and how you're comparing/evaluating the different methods.
 
-Poisson (add equation)
 
-$log(\mu_i) = \sum_{j=0}^{M}x_{ij}\beta_j$ $j=1...6$
+### Quasi-Poisson Regression
 
-- check ass for poisson
-- Normality: shapiro wilk -- p-value is ___ which is less than the significance level of $\alpha$ = 0.05. This means that the normality assumption is satisfied. Variance
-- Indepependence
-- Equal mean and variance
-
-To test which variables were significant, we used Poisson regression. We chose this method because our outcome variable, poor mental health days, is count-based and non-negative. We checked assumptions for Poisson regression including independence and the equality of mean and variance. Due to observed overdispersion, we used a quasi-Poisson model to account for greater variance. All predictors were standardized before fitting the model. The Shapiro-Wilk test for residual normality yielded a p-value of (will add later), supporting the model's assumptions. The regression revealed that feelings of loneliness and lack of social support were the only statistically significant predictors. We visualized these results using a bar chart of percent change effects, which clearly highlighted the stronger social predictors.
+To test which variables were significant, we used Poisson regression. We chose this method because our outcome variable, poor mental health days, is count-based and non-negative. We checked assumptions for Poisson regression including independence and the equality of mean and variance. Due to observed overdispersion, we used a quasi-Poisson model to account for greater variance. All predictors were standardized before fitting the model. The Shapiro-Wilk test for residual normality yielded a p-value of (will add later), which at $\alpha = 0.05$ significance level supports the model's assumptions. The regression revealed that feelings of loneliness and lack of social support were the only statistically significant predictors. We visualized these results using a bar chart of percent change effects, which clearly highlighted the stronger social predictors.
 
 ```{r}
 # Standardize predictors
@@ -122,9 +164,23 @@ print(clean_summary, n = Inf, width = Inf)
 
 ```
 
-ML
-Since we had a large sample, we decided to implement some machine learning to create predictive models. We selected Random Forest and XGBoost and evaluated them use RMSE. The lower the RMSE is the better the model is. 
+### Machine Learning
 
+Since we had a large sample, we decided to implement some machine learning to create predictive models. We selected Random Forest and XGBoost and evaluated them use RMSE. The lower the RMSE is the better the model is. We also used % increase in RMSE to evaluate feature importance. The greater the % increase is, the greater the importance it has in the model.
+
+
+
+## Results
+
+Describe your results. This can include tables and plots showing your results, as well as text describing how your models worked and the appropriate interpretations of the relevant output. (Note: Don’t just write out the textbook interpretations of all model coefficients. Instead, interpret the output that is relevant for your question of interest that is framed in the introduction)
+
+-- ADD PLOTS IN THIS SECTION --
+
+mention this
+ - There was no significant relationship between proportion/ratio of population to mental health providers
+ - not a not enough mental health providers problem --> implies it could be a social problem since lack of social and emotional support and feelings of loneliness also top predictors
+
+When evaluating the 2 models, Random Forest and XGBoost, we saw that the RMSE value for XGBoost was 0.44317 which was slightly lower than the RMSE for Random Forest, which was _____. This meant that the XGBoost model has a greater accuracy and predictive power compared to Random Forest.
 
 ```{r}
 # Prepare data for modeling
@@ -183,33 +239,16 @@ ggplot(var_imp, aes(x = reorder(Variable, `%IncRMSE`), y = `%IncRMSE`)) +
   )
 ```
 
-## Results
-
-Describe your results. This can include tables and plots showing your results, as well as text describing how your models worked and the appropriate interpretations of the relevant output. (Note: Don’t just write out the textbook interpretations of all model coefficients. Instead, interpret the output that is relevant for your question of interest that is framed in the introduction)
-
--- ADD PLOTS IN THIS SECTION --
-
-mention this
- - There was no significant relationship between proportion/ratio of population to mental health providers
- - not a not enough mental health providers problem --> implies it could be a social problem since lack of social and emotional support and feelings of loneliness also top predictors
-
-When evaluating the 2 models, Random Forest and XGBoost, we saw that the RMSE value for XGBoost was 0.44317 which was slightly lower than the RMSE for Random Forest, which was _____. This meant that the XGBoost model has a greater accuracy and predictive power compared to Random Forest.
-
-We also used SHAP to see feature importance in predicting the amount of poor mental health days in the model. We saw that 
-
-add SHAP and % RMSE 
-
-RMSE -- SHAP & Feature Importance
 
 
 ## Recommendations
 
-Make recommendations to UHG/Optum on specific targeted programs that can address the question of interest. Use evidence found in your analysis to back up your recommendations. This should be aimed at a non-technical reader.
-
 Our analysis found no significant relationship between the number of mental health providers in a county and the amount of self-reported poor mental health days, suggesting that increasing the amount of providers in U.S. counties will not be enough to meaningfully reduce mental health challenges. We found this to be especially important to consider for rural counties, where many of their alarming trends stem not just from low provider headcounts but from gaps in social factors like isolation and loneliness. Based on these conclusions, we recommend that UHG/Optum consider implementing county-informed mental health care programs with a goal of prioritizing connectedness and accessibility, especially in rural regions. A sample program could include the following components:
 
 1. Partner with particular state and local governments to improve broadband access (subsidized mobile hotspots, data plans, etc.). Many rural communities have the opportunity to utilize telehealth platforms but lack the internet infrastructure to support it. 
+
 2. Invest in virtual therapy platforms that can connect individuals to licensed mental health providers. In-person care is limited or sometimes unavailable in rural regions for a variety of reasons, making this method of care critical for many in these communities.
+
 3. Develop community peer-support networks, to be paired with virtual therapy. Our findings show that connectedness and social support are some of the strongest predictors of a good mental state. Community leaders and members could stand to provide social and emotional support in meetings and organized events, virtually or in-person. 
 
 Our recommendations shift the focus from solving mental health problems with only clinical interventions to a community-based, social approach. Planning investments and developments in these areas keeps the focus and support on the individual. This gives UHG/Optum the opportunity to better support these notably underserved areas and make a real impact, where many traditional, in-person models have not been enough.
@@ -217,16 +256,18 @@ Our recommendations shift the focus from solving mental health problems with onl
 
 ## Discussion
 
-Give your conclusions and summarize what you have learned with regards to your question of interest. Are there any limitations with the approaches you used? What do you think are the next steps to follow-up your project?
+### Research Summary
 
--- SUMMARY OF RESEARCH -- 
 Our analysis found no strong correlation between mental health provider density and number of poor mental health days, challenging the common assumption that increasing the number of clinical providers will lead to better mental health outcomes overall. This told us that there are other variables playing a bigger role here. Among the group tested, feelings of loneliness and lack of social and emotional support led as the strongest predictors of poor mental health days. Taking a further step with our findings, we discovered an alarming pattern in Alaskan counties, pointing to disparities in mental health outcomes between their urban and rural regions. This new view reinforced the importance of the social determinants of health and helped direct our discussions and recommendations. When comparing predictive models, we found XGBoost to be a better predictive model, as it captured the non-linear relationships between all our variables better. This suggests that more advanced machine learning methods could offer a better understanding of complex subjects like mental health.
 
---LIMITATIONS--
+### Limitations
+
 A main limitation of our work is our use of aggregated, county-level data, so variation on an individual/personal level is unknown. Population-level associations might not accurately reflect what happens at the individual level, making it harder to design effective care strategies. Our dataset lacked variables on broader social determinants, as we mainly used lack of social and emotional support to draw conclusions on social implications. Variables like housing/food insecurity and trauma exposure were not included and because of that, we were not able to fully interpret the true care accessibility issues going on, on the national and county levels. Lacking mental health provider metrics also made our analysis of clinical variables slightly weaker. We were not able to assess the role of insurance rates in mental health outcomes, which could possibly direct future work into another key area as well. 
 
---NEXT STEPS--
-Incorporate more large-scale data, like geographical factors, behavioral health indicators, and mental health provider metrics. Considering social (race, gender) and economic (income, insurance rates) factors could make for an even more valuable and insightful analysis. Exploring longitudinal data trends would also be useful when adopting machine learning for this type of analysis, that way patterns can be localized confidently in particular areas of interest. Future studies should seek individual-level data as well, to interpret the importance of personal/life experience and risk factors in order to account for how perceived support, discrimination, and stigma can affect mental health outcomes. Listening to individual perspectives and narratives allows for more accurate/empathetic understanding of disparities in mental health outcomes across the nation. Taking these future steps would open a door to even stronger clinical/behavioral health recommendations, all with the end goal of improving mental health outcomes for all people.
+
+### Next Steps
+
+For future work, we believe using geographical factors, behavioral health indicators, and mental health provider metrics will be useful. Considering social (race, gender) and economic (income, insurance rates) factors could make for an even more valuable and insightful analysis. Exploring longitudinal data trends would also be useful when adopting machine learning for this type of analysis, that way patterns can be localized confidently in particular areas of interest. Future studies should seek individual-level data as well, to interpret the importance of personal/life experience and risk factors in order to account for how perceived support, discrimination, and stigma can affect mental health outcomes. Listening to individual perspectives and narratives allows for more accurate/empathetic understanding of disparities in mental health outcomes across the nation. Taking these future steps would open a door to even stronger clinical/behavioral health recommendations, all with the end goal of improving mental health outcomes for all people.
 
 
 
@@ -237,100 +278,3 @@ Incorporate more large-scale data, like geographical factors, behavioral health 
 
 **(Feel free to remove this section when you submit)**
 
-This a Quarto document. 
-To learn more about Quarto see <https://quarto.org>.
-You can use the Render button to see what it looks like in HTML.
-
-### Text formatting
-
-Text can be bolded with **double asterisks** and italicized with *single asterisks*. 
-Monospace text, such as for short code snippets, uses `backticks`.
-(Note these are different from quotation marks or apostrophes.) Links are
-written [like this](http://example.com/).
-
-Bulleted lists can be written with asterisks:
-
-* Each item starts on a new line with an asterisk.
-* Items should start on the beginning of the line.
-* Leave blank lines after the end of the list so the list does not continue.
-
-Mathematics can be written with LaTeX syntax using dollar signs. 
-For instance, using single dollar signs we can write inline math: $(-b \pm \sqrt{b^2 - 4ac})/2a$.
-
-To write math in "display style", i.e. displayed on its own line centered on the
-page, we use double dollar signs:
-$$
-x^2 + y^2 = 1
-$$
-
-
-### Code blocks
-
-Code blocks are evaluated sequentially when you hit Render. 
-As the code runs, `R` prints out which block is running, so naming blocks is useful if you want to know which one takes a long time. 
-After the block name, you can specify [chunk options](https://yihui.org/knitr/options/). 
-For example, `echo` controls whether the code is printed in the document. 
-By default, output is printed in the document in monospace:
-
-```{r, echo = FALSE}
-head(mtcars)
-```
-
-Chunk options can also be written inside the code block, which is helpful for really long options, as we'll see soon.
-
-```{r}
-#| echo: false
-head(mtcars)
-```
-
-### Figures
-
-If a code block produces a plot or figure, this figure will automatically be inserted inline in the report. That is, it will be inserted exactly where the code block is.
-
-```{r}
-#| fig-width: 5
-#| fig-height: 3.5
-#| fig-cap: "This is a caption. It should explain what's in the figure and what's interesting about it. For instance: There is a negative, strong linear correlation between miles per gallon and horsepower for US cars in the 1970s."
-
-library(tidyverse)
-mtcars |> 
-  ggplot(aes(x = mpg, y = hp)) +
-  geom_point() +
-  labs(x = "Miles per gallon",
-       y = "Horsepower")
-```
-
-Notice the use of `fig-width` and `fig-height` to control the figure's size (in inches). 
-These control the sizes given to `R` when it generates the plot, so `R` proportionally adjusts the font sizes to be large enough.
-
-### Tables
-
-Use the `knitr::kable()` function to print tables as HTML:
-
-```{r}
-mtcars |> 
-  slice(1:5) |> 
-  knitr::kable()
-```
-
-We can summarize model results with a table. 
-For instance, suppose we fit a linear regression model:
-
-```{r}
-#| echo: true
-model1 <- lm(mpg ~ disp + hp + drat, data = mtcars)
-```
-
-It is *not* appropriate to simply print `summary(model1)` into the report. 
-If we want the reader to understand what models we have fit and what their results are, we should provide a nicely formatted table. 
-A simple option is to use the `tidy()` function from the `broom` package to get a data frame of the model fit, and simply report that as a table.
-
-```{r }
-#| results: "asis"
-#| tbl-cap: "Predicting fuel economy using vehicle features."
-library(broom)
-model1 |> 
-  tidy() |>
-  knitr::kable(digits = 2,
-               col.names = c("Term", "Estimate", "SE", "t", "p"))
-```
