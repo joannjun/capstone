@@ -205,6 +205,41 @@ Describe your results. This can include tables and plots showing your results, a
 
 -- ADD PLOTS IN THIS SECTION --
 
+Alaska Scatterplot: Social & Emotional Support vs. Poor Mental Health Days
+
+```{r}
+ak_df <- county_health_mental[county_health_mental$State_Abbreviation == "AK", ]
+unique(ak_df$Name)
+
+ak_df$Region_Type <- ifelse(
+  ak_df$Name %in% c(
+    "Anchorage Municipality",
+    "Fairbanks North Star Borough",
+    "Juneau City and Borough",
+    "Matanuska-Susitna Borough",
+    "Kenai Peninsula Borough",
+    "Ketchikan Gateway Borough",
+    "Sitka City and Borough"),
+  "Urban",
+  "Rural")
+
+ggplot(ak_df, aes(
+  x = as.numeric(Lack_of_Social_and_Emotional_Support_raw_value),
+  y = as.numeric(Poor_Mental_Health_Days_raw_value),
+  color = Region_Type)) +
+  geom_point(size = 3, alpha = 0.7) +
+  geom_text_repel(aes(label = Name), size = 2.5, max.overlaps = 20) +
+  geom_smooth(method = "lm", se = TRUE, color = "yellow") +
+  scale_color_manual(values = c("Urban" = "blue", "Rural" = "#097969")) +
+  labs(
+    title = "Alaska: Social & Emotional Support vs. Poor Mental Health Days",
+    subtitle = "Urban vs. Rural boroughs/census areas",
+    x = "Lack of Social & Emotional Support (%)",
+    y = "Poor Mental Health Days",
+    color = "Region Type") +
+  theme_minimal(base_size = 13)
+```
+
 mention this
  - There was no significant relationship between proportion/ratio of population to mental health providers
  - not a not enough mental health providers problem --> implies it could be a social problem since lack of social and emotional support and feelings of loneliness also top predictors
