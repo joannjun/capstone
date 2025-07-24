@@ -41,7 +41,7 @@ library(randomForest)
 
 ```
 
-```{r, echo=FALSE, message=FALSE}
+```{r, echo=FALSE, warning=FALSE, message=FALSE, include=FALSE}
 
 county_health_clean <- read_csv("county_health_mental.csv") 
 county_health_clean <- rename(county_health_clean, fips=`5-digit_FIPS_Code`)
@@ -69,7 +69,7 @@ One key component in addressing this issue is ensuring that individuals have acc
 This study aims to explore the relationship between the availability of mental health professionals and the mental well being of a population. Specifically, we ask: Does the number of mental health professionals per county affect the average number of poor mental health days? Understanding this relationship can help inform policy decisions, guide resource allocation, and identify areas most in need of improved mental health infrastructure, ultimately working toward better mental health outcomes at the community level.
 
 ## Data
-
+data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAIAAAAUCAYAAACnOeyiAAAAXklEQVR42mNgAIL///8zMYSGhjIDGYIMIiIMvECGMwMDN4M4kFEDUqIIZKwDMdSBjAsghj6Q8QPEMAAy/lOBoQekv4AYKkDGfgZeXl4RICOLQUtLiw3IUAJJMQIZ7AC2tU2tXJxOYgAAAABJRU5ErkJggg==
 ### About the Data
 We are using the 2025 County Health Rankings Dataset, which is collected by the University of Wisconsin Population Health Institute. The data ranks each county in all 50 states based on their health outcomes and variety of health factors. This dataset is widely used by policymakers and researchers to better understand and address factors influencing community and national health. Each row represents one U.S. county and its county-level metrics, and each column is a particular variable. We looked at 6 specific columns, focusing only on the raw values in that category. These were: mental health providers, poor mental health days, lack of social and emotional support, suicide rate, frequent mental distress, and county FIPS code. To standardize for population, we also engineered a variable of the proportion of Mental Health Providers per 100,000 people and used this to improve our visualizations.
 
@@ -90,7 +90,7 @@ corrplot(res, type = "upper", order = "hclust",
 
 To better understand the spatial distribution of mental health challenges and resource availability, we created choropleth maps at the county level across the U.S. The first map shows the number of poor mental health days, revealing clear regional disparities—counties in the South report higher rates, whereas parts of the North Central region experience relatively fewer poor mental health days. The second map visualizes the population-to-provider ratio, an indicator of access to care. A higher ratio suggests fewer mental health providers relative to the population. 
 
-```{r, echo=FALSE, message=FALSE}
+```{r, echo=FALSE, message=FALSE, include=FALSE}
 
 # Poor mental health days
 
@@ -475,6 +475,232 @@ ggplot(var_imp, aes(x = reorder(Variable, `%IncRMSE`), y = `%IncRMSE`)) +
     axis.title.x = element_text(margin = ggplot2::margin(t = 10))
   )
 ```
+
+
+```{r}
+
+# Rename selected columns in numeric_mental
+rename_map <- c(
+  "social_and_emotional_support" = "Lack_of_Social_and_Emotional_Support_raw_value",
+  "loneliness"               = "Feelings_of_Loneliness_raw_value",
+  "crude_suicide_rate"                              = "Crude_suicide_rate",
+  "population"                            = "Population_raw_value",
+  "raw_suicide"                              = "Suicides_raw_value",
+  "mental_health_providers"               = "Mental_Health_Providers_raw_value"
+)
+
+numeric_mental <- numeric_mental %>%
+  rename(!!!rename_map)
+
+
+```
+
+```{r}
+
+# split into testing and training data
+
+set.seed(101)
+
+sample <- sample.int(n = nrow(numeric_mental), size = floor(.75*nrow(numeric_mental)), replace = F)
+train <- numeric_mental[sample, ]
+test  <- numeric_mental[-sample, ]
+
+combi = rbind(train, test)
+
+county_health_clean$Poor_Mental_Health_Days_raw_value [is.na(county_health_clean$Poor_Mental_Health_Days_raw_value )]<-mean(county_health_clean$Poor_Mental_Health_Days_raw_value, na.rm=TRUE)
+
+county_health_clean$Poor_Mental_Health_Days_raw_value [is.na(county_health_clean$Poor_Mental_Health_Days_raw_value )]<-mean(county_health_clean$Poor_Mental_Health_Days_raw_value, na.rm=TRUE)
+
+```
+
+
+# actual
+```{r}
+
+# Replace NA in target variable with mean (or consider median if skewed)
+numeric_mental$Poor_Mental_Health_Days_raw_value[is.na(numeric_mental$Poor_Mental_Health_Days_raw_value)] <-
+  mean(numeric_mental$Poor_Mental_Health_Days_raw_value, na.rm = TRUE)
+
+
+# Train/Test Split
+set.seed(101)
+sample_idx <- sample.int(n = nrow(numeric_mental), size = floor(0.75 * nrow(numeric_mental)), replace = FALSE)
+train <- numeric_mental[sample_idx, ]
+test <- numeric_mental[-sample_idx, ]
+
+# Convert to numeric matrix for XGBoost
+train_matrix <- data.frame(model.matrix(~ . + 0, data = train))
+test_matrix <- data.frame(model.matrix(~ . + 0, data = test))
+
+# Ensure target variable is preserved
+train_label <- train_matrix$Poor_Mental_Health_Days_raw_value
+test_label <- test_matrix$Poor_Mental_Health_Days_raw_value
+
+# Remove target column from feature set
+train_matrix <- as.matrix(train_matrix[ , !colnames(train_matrix) %in% c("Poor_Mental_Health_Days_raw_value")])
+test_matrix <- as.matrix(test_matrix[ , !colnames(test_matrix) %in% c("Poor_Mental_Health_Days_raw_value")])
+
+
+# Create DMatrix
+dtrain <- xgb.DMatrix(data = train_matrix, label = train_label)
+dtest <- xgb.DMatrix(data = test_matrix, label = test_label)
+
+# Parameters
+params <- list(
+  objective = "reg:squarederror",
+  eval_metric = "rmse",
+  eta = 0.1,
+  max_depth = 6,
+  subsample = 0.8,
+  colsample_bytree = 0.8
+)
+
+# Train model
+xgb_model <- xgb.train(
+  params = params,
+  data = dtrain,
+  nrounds = 100,
+  watchlist = list(train = dtrain, eval = dtest),
+  early_stopping_rounds = 10,
+  print_every_n = 10
+)
+
+
+```
+
+```{r}
+
+# Predict
+preds <- predict(xgb_model, dtest)
+
+# RMSE
+rmse <- sqrt(mean((preds - test_label)^2))
+cat("Test RMSE:", rmse)
+
+```
+
+
+```{r, message=FALSE, echo=FALSE, warning=FALSE}
+# Feature importance plot
+importance_matrix <- xgb.importance(model = xgb_model)
+xgb.plot.importance(importance_matrix, top_n = 20)
+
+# Caret tuning (optional)
+control <- trainControl(method = "cv", number = 5)
+
+tune_grid <- expand.grid(
+  nrounds = c(100, 200),
+  max_depth = c(3, 6),
+  eta = c(0.05, 0.1),
+  gamma = 0,
+  colsample_bytree = 0.7,
+  min_child_weight = 1,
+  subsample = 0.8
+)
+
+xgb_caret <- train(
+  x = train_matrix,
+  y = train_label,
+  method = "xgbTree",
+  trControl = control,
+  tuneGrid = tune_grid
+)
+
+# View best model
+#xgb_caret$bestTune
+
+```
+
+```{r}
+
+# Function to calculate % increase in RMSE for each feature
+perm_importance <- function(model, data_matrix, true_values, baseline_rmse, top_n = 20) {
+  importance_list <- list()
+  
+  for (feature in colnames(data_matrix)) {
+    # Copy data
+    data_perm <- data_matrix
+    # Shuffle the column
+    data_perm[, feature] <- sample(data_perm[, feature])
+    # Predict
+    preds_perm <- predict(model, newdata = data_perm)
+    # Compute new RMSE
+    rmse_perm <- sqrt(mean((preds_perm - true_values)^2))
+    # Calculate % increase
+    perc_increase <- 100 * (rmse_perm - baseline_rmse) / baseline_rmse
+    # Store
+    importance_list[[feature]] <- perc_increase
+  }
+  
+  # Convert to data frame
+  imp_df <- data.frame(
+    Feature = names(importance_list),
+    PercentIncreaseRMSE = unlist(importance_list)
+  )
+  
+  # Sort and return top N
+  imp_df <- imp_df[order(-imp_df$PercentIncreaseRMSE), ]
+  return(head(imp_df, top_n))
+}
+
+```
+
+```{r}
+
+
+# 1. Compute baseline RMSE on unshuffled data
+baseline_rmse <- sqrt(mean((preds - test_label)^2))
+
+# 2. Define permutation-based feature importance function
+perm_importance <- function(model, data_matrix, true_values, baseline_rmse, top_n = 20) {
+  importance_list <- list()
+  
+  for (feature in colnames(data_matrix)) {
+    data_perm <- data_matrix
+    data_perm[, feature] <- sample(data_perm[, feature])  # shuffle feature
+    
+    # ❗ Predict using matrix input
+    preds_perm <- predict(model, newdata = as.matrix(data_perm))
+    
+    # Compute new RMSE
+    rmse_perm <- sqrt(mean((preds_perm - true_values)^2))
+    
+    # Percent increase
+    perc_increase <- 100 * (rmse_perm - baseline_rmse) / baseline_rmse
+    importance_list[[feature]] <- perc_increase
+  }
+  
+  # Return top N as a data frame
+  imp_df <- data.frame(
+    Feature = names(importance_list),
+    PercentIncreaseRMSE = unlist(importance_list)
+  )
+  
+  imp_df <- imp_df[order(-imp_df$PercentIncreaseRMSE), ]
+  return(head(imp_df, top_n))
+}
+
+# 3. Prepare data as data.frame
+test_df <- as.data.frame(test_matrix)
+
+# 4. Run permutation importance
+perm_imp_df <- perm_importance(xgb_model, test_df, test_label, baseline_rmse, top_n = 20)
+
+# Plot top features based on permutation importance
+ggplot(perm_imp_df, aes(x = reorder(Feature, PercentIncreaseRMSE), y = PercentIncreaseRMSE)) +
+  geom_col(fill = "blue") +
+  coord_flip() +
+  labs(
+    title = "Feature Importance",
+    x = "Predictor",
+    y = "% Increase in RMSE"
+  ) +
+  theme_minimal(base_size = 13)
+
+
+```
+
+
 
 ## Recommendations
 
