@@ -292,7 +292,7 @@ Describe the modeling techniques you chose, their assumptions, justifications fo
 
 ### Quasi-Poisson Regression
 
-To test which variables were significant, we used Poisson regression. We chose this method because our outcome variable, poor mental health days, is count-based and non-negative. We checked assumptions for Poisson regression including independence and the equality of mean and variance. Due to observed overdispersion, we used a quasi-Poisson model to account for greater variance. All predictors were standardized before fitting the model. The Shapiro-Wilk test for residual normality yielded a p-value of 0.0009671, which at $\alpha = 0.05$ significance level supports the model's normality assumptions. The regression revealed that feelings of loneliness and lack of social support were the only statistically significant predictors. We visualized these results using a bar chart of percent change effects, which clearly highlighted the stronger social predictors.
+To test which variables were significant, we used Poisson regression. We chose this method because our outcome variable, poor mental health days, is count-based and non-negative. We checked assumptions for Poisson regression including independence and the equality of mean and variance. Due to observed overdispersion, we used a quasi-Poisson model to account for greater variance. All predictors were standardized before fitting the model. The Shapiro-Wilk test for residual normality yielded a p-value of 0.0009671, which at $\alpha = 0.05$ significance level supports the model's normality assumptions. The regression revealed that feelings of loneliness is the most statistically significant predictor. We visualized these results using a table of percent change effects, which clearly highlighted the stronger social predictors.
 
 We first fit a Poisson linear model because 'poor_mental_days' is a non-negative count variable. 
 
@@ -311,8 +311,7 @@ where \(\mu_i = \mathbb E[Y_i]\) is the expected number of poor‑mental‑healt
 
 * **Independence** – counties are administrative units and provide reasonable independence.  
 * **Dispersion** – the ratio of residual deviance to degrees of freedom was > 1, indicating over‑dispersion.  
-* **Residual normality** – A Shapiro–Wilk test on the model’s residuals gave **W = 0.995, p < 0.001**, which tells us the residuals are not perfectly normal.  
-Poisson (and quasi‑Poisson) models don’t need normal residuals, and with lots of counties even tiny quirks look “significant”. Other plots showed no major issues, and the quasi‑Poisson fit already takes care of the extra spread in the data, so we kept this model.
+* **Residual normality** – A Shapiro–Wilk test on the model’s residuals gave a p-value of **0.009671**, which at $\alpha = 0.05$ significance level supports the model's normality assumptions.  
 
 Because of over‑dispersion we refit the model with a **quasi‑Poisson** model, which relaxes the dispersion requirement by estimating a dispersion parameter \(\phi\). All numeric predictors were **standardised (z‑scores)** to place coefficients on a common scale.
 
