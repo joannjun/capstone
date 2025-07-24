@@ -184,7 +184,7 @@ ggplot(map_data_sf) +
   coord_sf(xlim = c(-125, -66), ylim = c(24, 50), expand = FALSE) +
   theme_minimal()
 
-````
+```
 
 ### Alaska EDA
 
