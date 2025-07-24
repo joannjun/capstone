@@ -209,6 +209,7 @@ Describe your results. This can include tables and plots showing your results, a
 
 Alaska Scatterplot: Social & Emotional Support vs. Poor Mental Health Days
 
+```{r}
 ak_df <- county_health_mental[county_health_mental$State_Abbreviation == "AK", ]
 unique(ak_df$Name)
 
@@ -239,7 +240,7 @@ ggplot(ak_df, aes(
     y = "Poor Mental Health Days",
     color = "Region Type") +
   theme_minimal(base_size = 13)
-
+```
 
 mention this
  - There was no significant relationship between proportion/ratio of population to mental health providers
