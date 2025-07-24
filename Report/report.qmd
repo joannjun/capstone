@@ -298,14 +298,9 @@ We first fit a Poisson linear model because 'poor_mental_days' is a non-negative
 
 Log Link:
 
-\[
-\log(\mu_i) \;=\; \beta_0 + \beta_1\,\text{provider_ratio}_i
-                 + \beta_2\,\text{loneliness}_i
-                 + \beta_3\,\text{social_support}_i
-                 + \beta_4\,\text{suicide_rate}_i ,
-\]
+$\log(\mu_i) = \beta_0 + \beta_1x_1+ \beta_2x_2 + \beta_3x_3 + \beta_4x_4$
 
-where \(\mu_i = \mathbb E[Y_i]\) is the expected number of poor‑mental‑health days in county.\(i\).
+where $x_i$ stands for provider ratio, feelings of loneliness, social support and suicide rate and $\mu_i = \mathbb E[Y_i]$ is the expected number of poor‑mental‑health days in count).
 
 #### Assumption checks
 
@@ -385,7 +380,7 @@ library(ggplot2)
 library(ggrepel)
 library(readr)
 
-county_health_mental <- read_csv("/Users/lilyfransen/Proj 2 Capstone/county_health_mental.csv")
+county_health_mental <- read_csv("county_health_mental.csv")
 ak_df <- county_health_mental[county_health_mental$State_Abbreviation == "AK", ]
 unique(ak_df$Name)
 
