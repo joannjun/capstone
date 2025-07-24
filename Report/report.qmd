@@ -36,6 +36,7 @@ library(xgboost)
 library(e1071)     
 library(cowplot)
 library(SHAPforxgboost)
+library(ggrepel)
 
 ```
 
@@ -76,6 +77,64 @@ As part of our exploratory data analysis, we examined the relationship between p
 We saw that the data was normally distributed.
 
 ```{r}
+library(tidyverse)
+
+# Load and clean data
+raw_data <- read_csv("county_health_mental.csv", show_col_types = FALSE)
+raw_data <- raw_data[-1, ]
+
+#additional data 
+additional_data <- read_csv("analytic_data2025_v2.csv", show_col_types = FALSE)
+
+
+# Join both data sets by FIPS Code 
+mental_health_full <- raw_data |>
+  select(
+    fips             = `5-digit_FIPS_Code`,
+    state_abbr       = State_Abbreviation,
+    county_name      = Name,
+    poor_mental_days = Poor_Mental_Health_Days_raw_value,
+    suicide_rate     = Suicides_raw_value,
+    social_support   = Lack_of_Social_and_Emotional_Support_raw_value,
+    provider_ratio   = Ratio_of_population_to_mental_health_providers.,
+    loneliness       = Feelings_of_Loneliness_raw_value,
+    crude_suicide    = Crude_suicide_rate,
+    population       = Population_raw_value
+  ) |>
+  mutate(
+    fips = str_pad(fips, width = 5, side = "left", pad = "0")
+  ) |>
+  left_join(
+    additional_data |>
+      select(
+        fips = `5-digit FIPS Code`,
+        uninsured_adults            = `Uninsured Adults raw value`,
+        adult_smoking               = `Adult Smoking raw value`,
+        physical_inactivity         = `Physical Inactivity raw value`,
+        insufficient_sleep          = `Insufficient Sleep raw value`,
+        excessive_drinking          = `Excessive Drinking raw value`,
+        frequent_physical_distress  = `Frequent Physical Distress raw value`
+      ) |>
+      mutate(fips = str_pad(fips, width = 5, side = "left", pad = "0")),
+    by = "fips"
+  ) |>
+  filter(
+    !is.na(poor_mental_days),
+    !is.na(social_support),
+    !is.na(provider_ratio),
+    !is.na(uninsured_adults),
+    county_name != "United States"
+  ) |>
+  mutate(across(
+    c(
+      suicide_rate, poor_mental_days, social_support,
+      provider_ratio, loneliness, crude_suicide, population,
+      uninsured_adults, adult_smoking, physical_inactivity,
+      insufficient_sleep, excessive_drinking, frequent_physical_distress
+    ),
+    as.numeric
+  ))
+
 ggplot(mental_health_full, aes(x = provider_ratio, y = suicide_rate, color = social_support)) +
   geom_point(alpha = 0.6, size = 2) +
   scale_color_gradient(low = "skyblue", high = "darkred") +
