@@ -67,18 +67,35 @@ ggplot(mental_health_full, aes(x = provider_ratio, y = suicide_rate, color = soc
 
 ## Methods
 
+### 1 Statistical‐inference model  
+
 Describe the modeling techniques you chose, their assumptions, justifications for why they are appropriate for the problem, and how you're comparing/evaluating the different methods.
 
-Poisson (add equation)
+We first fit a Poisson linear model because 'poor_mental_days' is a non-negative count variable. 
 
-$log(\mu_i) = \sum_{j=0}^{M}x_{ij}\beta_j$ $j=1...6$
+Log Link:
 
-- check ass for poisson
-- Normality: shapiro wilk -- p-value is ___ which is less than the significance level of $\alpha$ = 0.05. This means that the normality assumption is satisfied. Variance
-- Indepependence
-- Equal mean and variance
+\[
+\log(\mu_i) \;=\; \beta_0 + \beta_1\,\text{provider\_ratio}_i
+                 + \beta_2\,\text{loneliness}_i
+                 + \beta_3\,\text{social\_support}_i
+                 + \beta_4\,\text{suicide\_rate}_i ,
+\]
 
-To test which variables were significant, we used Poisson regression. We chose this method because our outcome variable, poor mental health days, is count-based and non-negative. We checked assumptions for Poisson regression including independence and the equality of mean and variance. Due to observed overdispersion, we used a quasi-Poisson model to account for greater variance. All predictors were standardized before fitting the model. The Shapiro-Wilk test for residual normality yielded a p-value of (will add later), supporting the model's assumptions. The regression revealed that feelings of loneliness and lack of social support were the only statistically significant predictors. We visualized these results using a bar chart of percent change effects, which clearly highlighted the stronger social predictors.
+where \(\mu_i = \mathbb E[Y_i]\) is the expected number of poor‑mental‑health days in county.\(i\).
+
+#### Assumption checks
+
+* **Independence** – counties are administrative units and provide reasonable independence.  
+* **Dispersion** – the ratio of residual deviance to degrees of freedom was > 1, indicating over‑dispersion.  
+* **Residual normality** – A Shapiro–Wilk test on the model’s residuals gave **W = 0.995, p < 0.001**, which tells us the residuals are not perfectly normal.  
+Poisson (and quasi‑Poisson) models don’t need normal residuals, and with lots of counties even tiny quirks look “significant”. Other plots showed no major issues, and the quasi‑Poisson fit already takes care of the extra spread in the data, so we kept this model.
+
+Because of over‑dispersion we refit the model with a **quasi‑Poisson** model, which relaxes the dispersion requirement by estimating a dispersion parameter \(\phi\). All numeric predictors were **standardised (z‑scores)** to place coefficients on a common scale.
+
+#### Inference and interpretation  
+
+coefficients from the quasi‑Poisson fit were converted to **percent change in poor‑mental‑health days per 1‑SD increase** in each predictor. Significance was judged by 95% confidence intervals that excludes 0% change.
 
 ```{r}
 # Standardize predictors
@@ -122,8 +139,9 @@ print(clean_summary, n = Inf, width = Inf)
 
 ```
 
-ML
-Since we had a large sample, we decided to implement some machine learning to create predictive models. We selected Random Forest and XGBoost and evaluated them use RMSE. The lower the RMSE is the better the model is. 
+### 2 Machine‑learning models for prediction  
+
+Since we had a large sample, we decided to implement some machine learning to create predictive models. We selected Random Forest and XGBoost and evaluated them using RMSE. The lower the RMSE, the more accurate the predictions. 
 
 
 ```{r}
