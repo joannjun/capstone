@@ -381,6 +381,11 @@ Alaska Scatterplot: Social & Emotional Support vs. Poor Mental Health Days
 After analyzing findings from the previous plot, which found that Alaskan counties (or boroughs/census areas) seem to have significantly higher suicide rates than other US counties, we did a more in-depth analysis with this scatterplot filtering for only Alaskan boroughs/census areas using two other key variables: poor mental health days and lack of social & emotional support (both raw value counts). We also color coded by region type, differentiating rural from urban regions.
 
 ```{r}
+library(ggplot2)
+library(ggrepel)
+library(readr)
+
+county_health_mental <- read_csv("/Users/lilyfransen/Proj 2 Capstone/county_health_mental.csv")
 ak_df <- county_health_mental[county_health_mental$State_Abbreviation == "AK", ]
 unique(ak_df$Name)
 
