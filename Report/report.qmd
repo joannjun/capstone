@@ -73,9 +73,97 @@ This study aims to explore the relationship between the availability of mental h
 ### About the Data
 We are using the 2025 County Health Rankings Dataset, which is collected by the University of Wisconsin Population Health Institute. The data ranks each county in all 50 states based on their health outcomes and variety of health factors. This dataset is widely used by policymakers and researchers to better understand and address factors influencing community and national health. Each row represents one U.S. county and its county-level metrics, and each column is a particular variable. We looked at 6 specific columns, focusing only on the raw values in that category. These were: mental health providers, poor mental health days, lack of social and emotional support, suicide rate, frequent mental distress, and county FIPS code. To standardize for population, we also engineered a variable of the proportion of Mental Health Providers per 100,000 people and used this to improve our visualizations.
 
-As part of our exploratory data analysis, we examined the relationship between provider access and suicide rates. While the overall trend shows only a slight association between these two variables, a few striking outliers emerge (primarily Alaskan counties) with both high suicide rates and high provider availability. This pattern suggests that some communities may have responded to elevated suicide risks by increasing access to mental health services as a preventative strategy, rather than the provider access itself being a direct deterrent of higher suicide rates.
+### Exploratory Data Analysis (EDA)
 
-We saw that the data was normally distributed.
+To explore the relationships between variables, we created a correlation plot of the numerical variables. The plot revealed a strong positive correlation between feelings of loneliness and lack of social and emotional support. In contrast, population showed little to no correlation with the other variables. Poor mental health days appeared to be moderately correlated with all other variables. Notably, the number of mental health providers showed a slight negative correlation with both poor mental health days and lack of social and emotional support.
+
+```{r}
+
+# correlation plot
+
+res <- cor(numeric_mental, use = "complete.obs")
+library(corrplot)
+corrplot(res, type = "upper", order = "hclust", 
+         tl.col = "black", tl.srt = 45, tl.cex = 0.8)
+
+```
+
+To better understand the spatial distribution of mental health challenges and resource availability, we created choropleth maps at the county level across the U.S. The first map shows the number of poor mental health days, revealing clear regional disparities—counties in the South report higher rates, whereas parts of the North Central region experience relatively fewer poor mental health days. The second map visualizes the population-to-provider ratio, an indicator of access to care. A higher ratio suggests fewer mental health providers relative to the population. 
+
+```{r, echo=FALSE, message=FALSE}
+
+# Poor mental health days
+
+# Ensure tigris doesn't cache old shapefiles
+options(tigris_use_cache = FALSE)
+
+# Load US counties shapefile
+counties_sf <- tigris::counties(cb = TRUE, class = "sf")
+
+# Ensure fips code is 5 characters
+map_data_final$fips <- sprintf("%05s", map_data_final$fips)
+
+# Merge your data with the shapefile
+map_data_sf <- counties_sf %>%
+  left_join(map_data_final, by = c("GEOID" = "fips"))
+
+# Plot and zoom to continental US
+ggplot(map_data_sf) +
+  geom_sf(aes(fill = Poor_Mental_Health_Days_raw_value), color = NA) +
+  scale_fill_viridis_c(name = "Poor Mental Health Days", 
+                       limits = c(0, 10), 
+                       option = "inferno") +
+  labs(title = "North Central Region of U.S has Fewer Poor Mental Health Days Compared to South Region") +
+  coord_sf(xlim = c(-125, -66), ylim = c(24, 50), expand = FALSE) +
+  theme_minimal()
+
+```
+
+```{r}
+# population to provider ratio
+
+# Compute ratio without capping
+map_data_final <- map_data_final |>
+  mutate(
+    fips = sprintf("%05s", fips),
+    ratioMP = Population_raw_value / Mental_Health_Providers_raw_value,
+    ratioMP = ifelse(is.finite(ratioMP), ratioMP, NA)  # Remove NaN/Inf
+  )
+
+# Fill in missing values with mean of ratioMP
+mean_ratio <- mean(map_data_final$ratioMP, na.rm = TRUE)
+
+map_data_final <- map_data_final |>
+  mutate(
+    ratioMP = ifelse(is.na(ratioMP), mean_ratio, ratioMP)
+  )
+
+# Load counties
+options(tigris_use_cache = FALSE)
+counties_sf <- tigris::counties(cb = TRUE, class = "sf")
+
+# Merge
+map_data_sf <- counties_sf %>%
+  left_join(map_data_final, by = c("GEOID" = "fips"))
+
+# Plot
+ggplot(map_data_sf) +
+  geom_sf(aes(fill = ratioMP), color = NA) +
+  scale_fill_viridis_c(
+    name = "Pop : Provider Ratio",
+    option = "inferno",
+    trans = "log"  # Log scale emphasizes differences
+  ) +
+  labs(title = "Southwest Region has greater population to provider ratio") +
+  coord_sf(xlim = c(-125, -66), ylim = c(24, 50), expand = FALSE) +
+  theme_minimal()
+
+```
+
+These map highlights that Southwestern counties, along with parts of Alaska, tend to have more limited access to providers. Together, these maps underscore regional inequities in mental health outcomes and access to services, suggesting that both geography and infrastructure play key roles in shaping community well-being.
+
+
+As part of our exploratory data analysis, we examined the relationship between provider access and suicide rates. While the overall trend shows only a slight association between these two variables, a few striking outliers emerge (primarily Alaskan counties) with both high suicide rates and high provider availability. This pattern suggests that some communities may have responded to elevated suicide risks by increasing access to mental health services as a preventative strategy, rather than the provider access itself being a direct deterrent of higher suicide rates.
 
 ```{r}
 library(tidyverse)
@@ -159,94 +247,10 @@ ggplot(mental_health_full, aes(x = provider_ratio, y = suicide_rate, color = soc
     plot.subtitle = element_text(margin = ggplot2::margin(t = 5, b = 10)), 
     legend.position = "right"
   )
-```
-
-We created a correlation plot of the numerical variables.
-
-```{r}
-
-# correlation plot
-
-res <- cor(numeric_mental, use = "complete.obs")
-library(corrplot)
-corrplot(res, type = "upper", order = "hclust", 
-         tl.col = "black", tl.srt = 45, tl.cex = 0.8)
 
 ```
 
-From this we were able to see that feelings of loneliness and lack of social and emotional support had a high positive correlation with each other. We also saw that population had no correlation with the other variables. Poor mental health days seem to have a correlation with all variables. Mental health providers has a slight negative correlation with poor mental health days and lack of social and emotional support.
-
-```{r}
-
-# Poor mental health days
-
-# Ensure tigris doesn't cache old shapefiles
-options(tigris_use_cache = FALSE)
-
-# Load US counties shapefile
-counties_sf <- tigris::counties(cb = TRUE, class = "sf")
-
-# Ensure fips code is 5 characters
-map_data_final$fips <- sprintf("%05s", map_data_final$fips)
-
-# Merge your data with the shapefile
-map_data_sf <- counties_sf %>%
-  left_join(map_data_final, by = c("GEOID" = "fips"))
-
-# Plot and zoom to continental US
-ggplot(map_data_sf) +
-  geom_sf(aes(fill = Poor_Mental_Health_Days_raw_value), color = NA) +
-  scale_fill_viridis_c(name = "Poor Mental Health Days", 
-                       limits = c(0, 10), 
-                       option = "inferno") +
-  labs(title = "Poor Mental Health Days by County") +
-  coord_sf(xlim = c(-125, -66), ylim = c(24, 50), expand = FALSE) +
-  theme_minimal()
-
-```
-
-```{r}
-# population to provider ratio
-
-# Compute ratio without capping
-map_data_final <- map_data_final |>
-  mutate(
-    fips = sprintf("%05s", fips),
-    ratioMP = Population_raw_value / Mental_Health_Providers_raw_value,
-    ratioMP = ifelse(is.finite(ratioMP), ratioMP, NA)  # Remove NaN/Inf
-  )
-
-# Fill in missing values with mean of ratioMP
-mean_ratio <- mean(map_data_final$ratioMP, na.rm = TRUE)
-
-map_data_final <- map_data_final |>
-  mutate(
-    ratioMP = ifelse(is.na(ratioMP), mean_ratio, ratioMP)
-  )
-
-# Load counties
-options(tigris_use_cache = FALSE)
-counties_sf <- tigris::counties(cb = TRUE, class = "sf")
-
-# Merge
-map_data_sf <- counties_sf %>%
-  left_join(map_data_final, by = c("GEOID" = "fips"))
-
-# Plot
-ggplot(map_data_sf) +
-  geom_sf(aes(fill = ratioMP), color = "black", size = 0.01) +
-  scale_fill_viridis_c(
-    name = "Pop : Provider Ratio",
-    option = "inferno",
-    trans = "log"  # Log scale emphasizes differences
-  ) +
-  labs(title = "Population to Mental Health Provider Ratio by County") +
-  coord_sf(xlim = c(-125, -66), ylim = c(24, 50), expand = FALSE) +
-  theme_minimal()
-
-```
-
-### Alaska EDA
+### EDA
 
 ```{r}
 # install.packages("patchwork")
@@ -283,6 +287,52 @@ plot_mental_health + plot_ratio
 
 
 ```
+
+### Alaska Scatterplot: Social & Emotional Support vs. Poor Mental Health Days
+
+After analyzing findings from the previous plot, which found that Alaskan counties (or boroughs/census areas) seem to have significantly higher suicide rates than other US counties, we did a more in-depth analysis with this scatterplot filtering for only Alaskan boroughs/census areas using two other key variables: poor mental health days and lack of social & emotional support (both raw value counts). We also color coded by region type, differentiating rural from urban regions.
+
+```{r}
+library(ggplot2)
+library(ggrepel)
+library(readr)
+
+county_health_mental <- read_csv("county_health_mental.csv")
+ak_df <- county_health_mental[county_health_mental$State_Abbreviation == "AK", ]
+# unique(ak_df$Name)
+
+ak_df$Region_Type <- ifelse(
+  ak_df$Name %in% c(
+    "Anchorage Municipality",
+    "Fairbanks North Star Borough",
+    "Juneau City and Borough",
+    "Matanuska-Susitna Borough",
+    "Kenai Peninsula Borough",
+    "Ketchikan Gateway Borough",
+    "Sitka City and Borough"),
+  "Urban",
+  "Rural")
+
+ggplot(ak_df, aes(
+  x = as.numeric(Lack_of_Social_and_Emotional_Support_raw_value),
+  y = as.numeric(Poor_Mental_Health_Days_raw_value),
+  color = Region_Type)) +
+  geom_point(size = 3, alpha = 0.7) +
+  geom_text_repel(aes(label = Name), size = 2.5, max.overlaps = 20) +
+  geom_smooth(method = "lm", se = TRUE, color = "yellow") +
+  scale_color_manual(values = c("Urban" = "blue", "Rural" = "#097969")) +
+  labs(
+    title = "Alaska: Social & Emotional Support vs. Poor Mental Health Days",
+    subtitle = "Urban vs. Rural boroughs/census areas",
+    x = "Lack of Social & Emotional Support (%)",
+    y = "Poor Mental Health Days",
+    color = "Region Type") +
+  theme_minimal(base_size = 13)
+```
+
+The linear regression line captures the overall trend, where rural areas tend to fall above the trend line, telling us that for a given level of low social support, Alaskans in rural regions may experience more poor mental health days than expected. In contrast, urban areas clustering lower on both the x and y suggests that there may be disparities in mental health outcomes between Alaska's urban and rural regions. This secondary analysis highlights the social determinants of health and considers social support to be a more critical factor than we previously thought. 
+
+
 
 ## Methods
 
@@ -368,51 +418,6 @@ Since we had a large sample, we decided to implement some machine learning to cr
 
 Describe your results. This can include tables and plots showing your results, as well as text describing how your models worked and the appropriate interpretations of the relevant output. (Note: Don’t just write out the textbook interpretations of all model coefficients. Instead, interpret the output that is relevant for your question of interest that is framed in the introduction)
 
--- ADD PLOTS IN THIS SECTION --
-
-Alaska Scatterplot: Social & Emotional Support vs. Poor Mental Health Days
-
-After analyzing findings from the previous plot, which found that Alaskan counties (or boroughs/census areas) seem to have significantly higher suicide rates than other US counties, we did a more in-depth analysis with this scatterplot filtering for only Alaskan boroughs/census areas using two other key variables: poor mental health days and lack of social & emotional support (both raw value counts). We also color coded by region type, differentiating rural from urban regions.
-
-```{r}
-library(ggplot2)
-library(ggrepel)
-library(readr)
-
-county_health_mental <- read_csv("county_health_mental.csv")
-ak_df <- county_health_mental[county_health_mental$State_Abbreviation == "AK", ]
-unique(ak_df$Name)
-
-ak_df$Region_Type <- ifelse(
-  ak_df$Name %in% c(
-    "Anchorage Municipality",
-    "Fairbanks North Star Borough",
-    "Juneau City and Borough",
-    "Matanuska-Susitna Borough",
-    "Kenai Peninsula Borough",
-    "Ketchikan Gateway Borough",
-    "Sitka City and Borough"),
-  "Urban",
-  "Rural")
-
-ggplot(ak_df, aes(
-  x = as.numeric(Lack_of_Social_and_Emotional_Support_raw_value),
-  y = as.numeric(Poor_Mental_Health_Days_raw_value),
-  color = Region_Type)) +
-  geom_point(size = 3, alpha = 0.7) +
-  geom_text_repel(aes(label = Name), size = 2.5, max.overlaps = 20) +
-  geom_smooth(method = "lm", se = TRUE, color = "yellow") +
-  scale_color_manual(values = c("Urban" = "blue", "Rural" = "#097969")) +
-  labs(
-    title = "Alaska: Social & Emotional Support vs. Poor Mental Health Days",
-    subtitle = "Urban vs. Rural boroughs/census areas",
-    x = "Lack of Social & Emotional Support (%)",
-    y = "Poor Mental Health Days",
-    color = "Region Type") +
-  theme_minimal(base_size = 13)
-```
-
-The linear regression line captures the overall trend, where rural areas tend to fall above the trend line, telling us that for a given level of low social support, Alaskans in rural regions may experience more poor mental health days than expected. In contrast, urban areas clustering lower on both the x and y suggests that there may be disparities in mental health outcomes between Alaska's urban and rural regions. This secondary analysis highlights the social determinants of health and considers social support to be a more critical factor than we previously thought. 
 
 ```{r}
 # Prepare data for modeling
