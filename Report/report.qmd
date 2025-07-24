@@ -37,6 +37,7 @@ library(e1071)
 library(cowplot)
 library(SHAPforxgboost)
 library(ggrepel)
+library(randomForest)
 
 ```
 
