@@ -101,8 +101,6 @@ ggplot(mental_health_full, aes(x = provider_ratio, y = suicide_rate, color = soc
   )
 ```
 
-### Correlation Plot
-
 We created a correlation plot of the numerical variables.
 
 ```{r}
@@ -117,8 +115,6 @@ corrplot(res, type = "upper", order = "hclust",
 ```
 
 From this we were able to see that feelings of loneliness and lack of social and emotional support had a high positive correlation with each other. We also saw that population had no correlation with the other variables. Poor mental health days seem to have a correlation with all variables. Mental health providers has a slight negative correlation with poor mental health days and lack of social and emotional support.
-
-### Choropleth Map
 
 ```{r}
 
@@ -190,6 +186,43 @@ ggplot(map_data_sf) +
 
 ````
 
+### Alaska EDA
+
+```{r}
+# install.packages("patchwork")
+library(patchwork)
+library(tigris)
+library(dplyr)
+library(ggplot2)
+library(patchwork)
+
+# Map 1: Poor Mental Health Days
+plot_mental_health <- ggplot(map_data_sf) +
+  geom_sf(aes(fill = Poor_Mental_Health_Days_raw_value), color = NA) +
+  scale_fill_viridis_c(name = "Poor Mental Health Days", 
+                       limits = c(0, 10), 
+                       option = "inferno") +
+  labs(title = "Poor Mental Health Days by County") +
+  coord_sf(xlim = c(-180, -125), ylim = c(50, 75), expand = FALSE) +
+  theme_minimal()
+
+# Map 2: Population to Provider Ratio
+plot_ratio <- ggplot(map_data_sf) +
+  geom_sf(aes(fill = ratioMP), color = NA) +
+  scale_fill_viridis_c(
+    name = "Pop : Provider Ratio",
+    option = "inferno",
+    trans = "log"
+  ) +
+  labs(title = "Population to Mental Health Provider Ratio by County") +
+  coord_sf(xlim = c(-180, -125), ylim = c(50, 75), expand = FALSE) +
+  theme_minimal()
+
+# Combine side by side
+plot_mental_health + plot_ratio
+
+
+```
 
 ## Methods
 
