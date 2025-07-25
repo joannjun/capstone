@@ -21,7 +21,6 @@ bibliography: references.bib
 ---
 
 ```{r}
-
 library(readr)
 library(knitr)
 library(dplyr)
@@ -40,6 +39,7 @@ library(cowplot)
 library(SHAPforxgboost)
 library(ggrepel)
 library(randomForest)
+
 
 ```
 
@@ -92,7 +92,9 @@ corrplot(res, type = "upper", order = "hclust",
 
 To better understand the spatial distribution of mental health challenges and resource availability, we created choropleth maps at the county level across the U.S. The first map shows the number of poor mental health days, revealing clear regional disparities—counties in the South report higher rates, whereas parts of the North Central region experience relatively fewer poor mental health days. The second map visualizes the population-to-provider ratio, an indicator of access to care. A higher ratio suggests fewer mental health providers relative to the population. 
 
-```{r, echo=FALSE, message=FALSE, include=FALSE}
+
+```{r, message=FALSE,echo=FALSE, warning=FALSE, fig.align="center", tidy=TRUE}
+
 
 # Poor mental health days
 
@@ -347,9 +349,24 @@ To test which variables were significant, we used Poisson regression. We chose t
 
 We first fit a Poisson linear model because 'poor_mental_days' is a non-negative count variable. 
 
-$\log(\mu_i) = \beta_0 + \beta_1x_1+ \beta_2x_2 + \beta_3x_3 + \beta_4x_4$
 
-where $x_i$ stands for provider ratio, feelings of loneliness, social support and suicide rate and $\mu_i = \mathbb E[Y_i]$ is the expected number of poor‑mental‑health days in count).
+
+$$
+\log(\mu_i) \;=\; \beta_0 
+                + \beta_1 x_{1i}
+                + \beta_2 x_{2i}
+                + \beta_3 x_{3i}
+                + \beta_4 x_{4i}
+$$
+
+
+where  
+
+$x_1$ = provider–population ratio  
+$x_2$ = feelings of loneliness  
+$x_3$ = lack of social support  
+$x_4$= suicide rate
+
 
 #### Assumption checks
 
@@ -400,11 +417,30 @@ clean_summary <- broom::tidy(quasi_model_selected, conf.int = TRUE) |>
     `p.value`
   )
 
-# Display the table
-print(clean_summary, n = Inf, width = Inf)
 
 ```
 
+
+```{r}
+# ---- Display nicely formatted table ----
+# install.packages("kableExtra")   # run once if not installed
+library(kableExtra)
+
+clean_summary |>
+  mutate(across(where(is.numeric), ~ round(., 2))) |>
+  rename(
+    `% Change` = `Percent Change in Poor Mental Health Days`,
+    `CI Lower` = `95% CI Lower`,
+    `CI Upper` = `95% CI Upper`,
+    `p‑value`  = p.value
+  ) |>
+  kable(
+    caption   = "Quasi‑Poisson regression: percent change in poor‑mental‑health days per 1‑SD increase",
+    align     = "lrrrr",                    # left for text, right for numbers
+    col.names = c("Predictor", "% Change", "95% CI Lower", "95% CI Upper", "p‑value")
+  ) |>
+  kable_styling(full_width = FALSE, position = "center")
+```
 
 ### 2 Machine‑learning models for prediction  
 
@@ -460,6 +496,7 @@ ggplot(ak_df, aes(
 ```
 
 The linear regression line captures the overall trend, where rural areas tend to fall above the trend line, telling us that for a given level of low social support, Alaskans in rural regions may experience more poor mental health days than expected. In contrast, urban areas clustering lower on both the x and y suggests that there may be disparities in mental health outcomes between Alaska's urban and rural regions. This secondary analysis highlights the social determinants of health and considers social support to be a more critical factor than we previously thought. 
+
 
 ```{r}
 # Prepare data for modeling
