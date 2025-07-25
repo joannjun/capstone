@@ -22,6 +22,7 @@ execute:
 ```{r}
 
 library(readr)
+library(knitr)
 library(dplyr)
 library(Hmisc)
 library(corrplot)
@@ -60,7 +61,7 @@ numeric_mental <- map_data_final |>
 
 ## Introduction 
 
-In recent years, the mental health epidemic has become a growing public health concern. Factors such as social isolation, economic uncertainty, the stigmatization of mental illness, and limited access to care have all contributed to an increase in reported cases of anxiety, depression, and other mental health conditions. According to the Centers for Disease Control and Prevention (CDC), more than one in five adults in the United States live with a mental illness (insert citation). Poor mental health can significantly affect an individual’s quality of life, impacting emotional well-being, job performance, relationships, and physical health. Yet, according to the National Institutes of Health (NIH), only about half of those experiencing mental illness receive treatment (insert citation).
+In recent years, the mental health epidemic has become a growing public health concern. Factors such as social isolation, economic uncertainty, the stigmatization of mental illness, and limited access to care have all contributed to an increase in reported cases of anxiety, depression, and other mental health conditions. According to the Centers for Disease Control and Prevention (CDC), more than one in five adults in the United States live with a mental illness (insert citation). Poor mental health can significantly affect an individual’s quality of life, impacting emotional well-being, job performance, relationships, and physical health. Yet, according to the National Institutes of Health (NIH), only about half of those experiencing mental illness receive treatment.
 
 This concerning gap between mental health needs and treatment raises an important question: does access to mental health care influence mental health outcomes?
 
@@ -94,8 +95,9 @@ To better understand the spatial distribution of mental health challenges and re
 
 # Poor mental health days
 
+
 # Ensure tigris doesn't cache old shapefiles
-options(tigris_use_cache = FALSE)
+# options(tigris_use_cache = FALSE)
 
 # Load US counties shapefile
 counties_sf <- tigris::counties(cb = TRUE, class = "sf")
@@ -118,6 +120,7 @@ ggplot(map_data_sf) +
   theme_minimal()
 
 ```
+
 
 ```{r}
 # population to provider ratio
@@ -413,9 +416,6 @@ Since we had a large sample, we decided to implement some machine learning to cr
 
 Describe your results. This can include tables and plots showing your results, as well as text describing how your models worked and the appropriate interpretations of the relevant output. (Note: Don’t just write out the textbook interpretations of all model coefficients. Instead, interpret the output that is relevant for your question of interest that is framed in the introduction)
 
-<<<<<<< HEAD
--- ADD PLOTS IN THIS SECTION --
-
 Alaska Scatterplot: Social & Emotional Support vs. Poor Mental Health Days
 
 After analyzing findings from the previous plot, which found that Alaskan counties (or boroughs/census areas) seem to have significantly higher suicide rates than other US counties, we did a more in-depth analysis with this scatterplot filtering for only Alaskan boroughs/census areas using two other key variables: poor mental health days and lack of social & emotional support (both raw value counts). We also color coded by region type, differentiating rural from urban regions.
@@ -459,8 +459,6 @@ ggplot(ak_df, aes(
 ```
 
 The linear regression line captures the overall trend, where rural areas tend to fall above the trend line, telling us that for a given level of low social support, Alaskans in rural regions may experience more poor mental health days than expected. In contrast, urban areas clustering lower on both the x and y suggests that there may be disparities in mental health outcomes between Alaska's urban and rural regions. This secondary analysis highlights the social determinants of health and considers social support to be a more critical factor than we previously thought. 
-=======
->>>>>>> 8b8438dd8f2ab9ef4377ca344f0d1f8bdf3b9576
 
 ```{r}
 # Prepare data for modeling
@@ -700,7 +698,7 @@ perm_importance <- function(model, data_matrix, true_values, baseline_rmse, top_
     data_perm <- data_matrix
     data_perm[, feature] <- sample(data_perm[, feature])  # shuffle feature
     
-    # ❗ Predict using matrix input
+    # Predict using matrix input
     preds_perm <- predict(model, newdata = as.matrix(data_perm))
     
     # Compute new RMSE
@@ -773,5 +771,6 @@ For future work, we believe using geographical factors, behavioral health indica
 
 ## Sources
 
-**(Feel free to remove this section when you submit)**
+1. National Institute of Mental Health. (n.d.). Mental health statistics. U.S. Department of Health and Human Services. https://www.nimh.nih.gov/health/statistics (Accessed July 20, 2025)
 
+2. Centers for Disease Control and Prevention. (2023, September 15). About mental health. U.S. Department of Health and Human Services. https://www.cdc.gov/mental-health/about/index.html (Accessed July 20, 2025)
