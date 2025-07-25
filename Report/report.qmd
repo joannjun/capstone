@@ -100,6 +100,17 @@ To better understand the spatial distribution of mental health challenges and re
 counties_sf <- tigris::counties(cb = TRUE, class = "sf", progress_bar = FALSE)
 
 # Ensure fips is 5 characters
+
+
+# Ensure tigris doesn't cache old shapefiles
+#options(tigris_use_cache = FALSE)
+
+# Load US counties shapefile
+options(tigris_quiet = TRUE)  # Suppress tigris download messages
+
+counties_sf <- tigris::counties(cb = TRUE, class = "sf")
+
+# Ensure fips code is 5 characters
 map_data_final$fips <- sprintf("%05s", map_data_final$fips)
 
 # Join your data to the shapefile
@@ -814,4 +825,64 @@ A main limitation of our work is our use of aggregated, county-level data, so va
 For future work, we believe using geographical factors, behavioral health indicators, and mental health provider metrics will be useful. Considering social (race, gender) and economic (income, insurance rates) factors could make for an even more valuable and insightful analysis. Exploring longitudinal data trends would also be useful when adopting machine learning for this type of analysis, that way patterns can be localized confidently in particular areas of interest. Future studies should seek individual-level data as well, to interpret the importance of personal/life experience and risk factors in order to account for how perceived support, discrimination, and stigma can affect mental health outcomes. Listening to individual perspectives and narratives allows for more accurate/empathetic understanding of disparities in mental health outcomes across the nation. Taking these future steps would open a door to even stronger clinical/behavioral health recommendations, all with the end goal of improving mental health outcomes for all people.
 
 ## Appendix
+
+Another way we evaluated feature importance was using a gain based vs. permutation based approach. In the gain based method (shown in green), which measures how much each feature contributes to reducing error in the tree-building process, loneliness, social and emotional support, and crude suicide rate emerged as the most influential features. On the other hand, the permutation based method (shown in blue), which assesses how randomizing each feature affects model performance (% increase in MSE), indicated that social and emotional support and loneliness still had importance, but population and raw suicide counts also showed higher relevance than in the gain based metric.
+
+```{r}
+# Baseline MSE
+baseline_mse <- mean((preds - test_label)^2)
+
+# Permutation function
+perm_importance_mse <- function(model, data_matrix, true_values, baseline_mse) {
+  imp_list <- list()
+  
+  for (feature in colnames(data_matrix)) {
+    data_perm <- data_matrix
+    data_perm[, feature] <- sample(data_perm[, feature])
+    
+    pred_perm <- predict(model, newdata = as.matrix(data_perm))
+    mse_perm <- mean((pred_perm - true_values)^2)
+    
+    perc_increase <- 100 * (mse_perm - baseline_mse) / baseline_mse
+    imp_list[[feature]] <- perc_increase
+  }
+  
+  df <- data.frame(Feature = names(imp_list), PercMSE = unlist(imp_list))
+  df <- df[order(-df$PercMSE), ]
+  return(df)
+}
+
+# Run
+perm_df <- perm_importance_mse(xgb_model, as.data.frame(test_matrix), test_label, baseline_mse)
+
+gain_df <- xgb.importance(model = xgb_model)[ , c("Feature", "Gain")]
+
+# Join by Feature
+importance_compare <- merge(gain_df, perm_df, by = "Feature")
+
+# Scale gain for comparison (optional)
+importance_compare$GainScaled <- 100 * importance_compare$Gain / max(importance_compare$Gain)
+
+library(tidyr)
+
+# Convert to long format for ggplot
+importance_long <- importance_compare %>%
+  select(Feature, GainScaled, PercMSE) %>%
+  pivot_longer(cols = c(GainScaled, PercMSE), names_to = "Metric", values_to = "Value")
+
+# Plot
+ggplot(importance_long, aes(x = reorder(Feature, Value), y = Value, fill = Metric)) +
+  geom_col(position = "dodge") +
+  coord_flip() +
+  scale_fill_manual(values = c("GainScaled" = "seagreen", "PercMSE" = "dodgerblue3"),
+                    labels = c("Gain-Based (Scaled)", "% Increase MSE")) +
+  labs(title = "Feature Importance: Gain vs Permutation-Based",
+       x = "Feature",
+       y = "Value",
+       fill = "Importance Metric") +
+  theme_minimal(base_size = 13)
+
+```
+
+The consistent presence of social support and loneliness across both metrics reinforces their key role in mental health related outcomes.
 
