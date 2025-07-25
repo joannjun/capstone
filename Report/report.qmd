@@ -499,6 +499,24 @@ The linear regression line captures the overall trend, where rural areas tend to
 
 
 ```{r}
+# --- Manually enter your metrics here ---
+metric_tbl <- tribble(
+  ~Model,          ~MSE,   ~RMSE,
+  "Random Forest", 0.212,  0.460,   # replace with real RF values
+  "XGBoost",       0.196,  0.443   # replace with real XGB values
+)
+
+metric_tbl |>
+  kable(
+    caption   = "Test‑set prediction error for each model",
+    align     = "lrr",
+    col.names = c("Model", "MSE", "RMSE")
+  ) |>
+  kable_styling(full_width = FALSE, position = "center")
+```
+
+
+```{r}
 # Prepare data for modeling
 rf_data <- mental_health_full |>
   select(
@@ -528,8 +546,8 @@ predictions <- predict(rf_model, test_data)
 mse <- mean((predictions - test_data$poor_mental_days)^2)
 rmse <- sqrt(mse)
 
-cat(" Mean Squared Error (MSE):", round(mse, 3), "\n")
-cat(" Root Mean Squared Error (RMSE):", round(rmse, 3), "\n")
+rf_mse  <- mse
+rf_rmse <- rmse
 
 # Variable importance
 var_imp <- importance(rf_model) |>
@@ -645,16 +663,6 @@ xgb_model <- xgb.train(
 
 ```
 
-```{r}
-
-# Predict
-preds <- predict(xgb_model, dtest)
-
-# RMSE
-rmse <- sqrt(mean((preds - test_label)^2))
-#cat("Test RMSE:", rmse)
-
-```
 
 
 ```{r, message=FALSE, echo=FALSE, warning=FALSE}
@@ -726,6 +734,7 @@ perm_importance <- function(model, data_matrix, true_values, baseline_rmse, top_
 
 
 # 1. Compute baseline RMSE on unshuffled data
+preds <- predict(xgb_model, newdata = test_matrix)
 baseline_rmse <- sqrt(mean((preds - test_label)^2))
 
 # 2. Define permutation-based feature importance function
@@ -746,6 +755,7 @@ perm_importance <- function(model, data_matrix, true_values, baseline_rmse, top_
     perc_increase <- 100 * (rmse_perm - baseline_rmse) / baseline_rmse
     importance_list[[feature]] <- perc_increase
   }
+
   
   # Return top N as a data frame
   imp_df <- data.frame(
@@ -773,6 +783,7 @@ ggplot(perm_imp_df, aes(x = reorder(Feature, PercentIncreaseRMSE), y = PercentIn
     y = "% Increase in RMSE"
   ) +
   theme_minimal(base_size = 13)
+
 
 
 ```
