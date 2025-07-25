@@ -345,7 +345,7 @@ To test which variables were significant, we used Poisson regression. We chose t
 
 We first fit a Poisson linear model because 'poor_mental_days' is a non-negative count variable. 
 
-<<<<<<< HEAD
+
 
 $$
 \log(\mu_i) \;=\; \beta_0 
@@ -354,9 +354,7 @@ $$
                 + \beta_3 x_{3i}
                 + \beta_4 x_{4i}
 $$
-=======
-$\log(\mu_i) = \beta_0 + \beta_1x_1+ \beta_2x_2 + \beta_3x_3 + \beta_4x_4$
->>>>>>> 47e83a5c4711a101b2032d7b85c7c0f487e5d80a
+
 
 where  
 
@@ -415,11 +413,30 @@ clean_summary <- broom::tidy(quasi_model_selected, conf.int = TRUE) |>
     `p.value`
   )
 
-# Display the table
-print(clean_summary, n = Inf, width = Inf)
 
 ```
 
+
+```{r}
+# ---- Display nicely formatted table ----
+# install.packages("kableExtra")   # run once if not installed
+library(kableExtra)
+
+clean_summary |>
+  mutate(across(where(is.numeric), ~ round(., 2))) |>
+  rename(
+    `% Change` = `Percent Change in Poor Mental Health Days`,
+    `CI Lower` = `95% CI Lower`,
+    `CI Upper` = `95% CI Upper`,
+    `p‑value`  = p.value
+  ) |>
+  kable(
+    caption   = "Quasi‑Poisson regression: percent change in poor‑mental‑health days per 1‑SD increase",
+    align     = "lrrrr",                    # left for text, right for numbers
+    col.names = c("Predictor", "% Change", "95% CI Lower", "95% CI Upper", "p‑value")
+  ) |>
+  kable_styling(full_width = FALSE, position = "center")
+```
 
 ### 2 Machine‑learning models for prediction  
 
@@ -479,7 +496,7 @@ ggplot(ak_df, aes(
 
 The linear regression line captures the overall trend, where rural areas tend to fall above the trend line, telling us that for a given level of low social support, Alaskans in rural regions may experience more poor mental health days than expected. In contrast, urban areas clustering lower on both the x and y suggests that there may be disparities in mental health outcomes between Alaska's urban and rural regions. This secondary analysis highlights the social determinants of health and considers social support to be a more critical factor than we previously thought. 
 
->>>>>>> 8b8438dd8f2ab9ef4377ca344f0d1f8bdf3b9576
+
 
 ```{r}
 # Prepare data for modeling
