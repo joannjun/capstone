@@ -90,11 +90,9 @@ corrplot(res, type = "upper", order = "hclust",
 
 To better understand the spatial distribution of mental health challenges and resource availability, we created choropleth maps at the county level across the U.S. The first map shows the number of poor mental health days, revealing clear regional disparities—counties in the South report higher rates, whereas parts of the North Central region experience relatively fewer poor mental health days. The second map visualizes the population-to-provider ratio, an indicator of access to care. A higher ratio suggests fewer mental health providers relative to the population. 
 
-<<<<<<< HEAD
+
 ```{r, message=FALSE,echo=FALSE, warning=FALSE, fig.align="center", tidy=TRUE}
-=======
-```{r, echo=FALSE, message=FALSE, include=FALSE}
->>>>>>> 47e83a5c4711a101b2032d7b85c7c0f487e5d80a
+
 
 # Poor mental health days
 
