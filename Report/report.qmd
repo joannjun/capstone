@@ -876,7 +876,6 @@ ggplot(importance_long, aes(x = reorder(Feature, Value), y = Value, fill = Metri
   theme_minimal(base_size = 13)
 
 ```
-```
 
 The consistent presence of social support and loneliness across both metrics reinforces their key role in mental health related outcomes.
 
