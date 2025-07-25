@@ -96,29 +96,27 @@ To better understand the spatial distribution of mental health challenges and re
 ```{r, message=FALSE,echo=FALSE, warning=FALSE, fig.align="center", tidy=TRUE}
 
 
-# Poor mental health days
+# Load US counties shapefile (no noisy progress bar)
+counties_sf <- tigris::counties(cb = TRUE, class = "sf", progress_bar = FALSE)
 
-
-# Ensure tigris doesn't cache old shapefiles
-# options(tigris_use_cache = FALSE)
-
-# Load US counties shapefile
-counties_sf <- tigris::counties(cb = TRUE, class = "sf")
-
-# Ensure fips code is 5 characters
+# Ensure fips is 5 characters
 map_data_final$fips <- sprintf("%05s", map_data_final$fips)
 
-# Merge your data with the shapefile
+# Join your data to the shapefile
 map_data_sf <- counties_sf %>%
   left_join(map_data_final, by = c("GEOID" = "fips"))
 
-# Plot and zoom to continental US
+# Plot the choropleth (continental US)
 ggplot(map_data_sf) +
   geom_sf(aes(fill = Poor_Mental_Health_Days_raw_value), color = NA) +
-  scale_fill_viridis_c(name = "Poor Mental Health Days", 
-                       limits = c(0, 10), 
-                       option = "inferno") +
-  labs(title = "North Central Region of U.S has Fewer Poor Mental Health Days Compared to South Region") +
+  scale_fill_viridis_c(
+    name   = "Poor Mental Health Days",
+    limits = c(0, 10),
+    option = "inferno"
+  ) +
+  labs(
+    title = "Poor Mental Health Days by County (lower 48 states)"
+  ) +
   coord_sf(xlim = c(-125, -66), ylim = c(24, 50), expand = FALSE) +
   theme_minimal()
 
