@@ -15,6 +15,7 @@ execute:
   echo: false
   warning: false
   message: false
+bibliography: references.bib
 ---
 
 ---
@@ -61,7 +62,7 @@ numeric_mental <- map_data_final |>
 
 ## Introduction 
 
-In recent years, the mental health epidemic has become a growing public health concern. Factors such as social isolation, economic uncertainty, the stigmatization of mental illness, and limited access to care have all contributed to an increase in reported cases of anxiety, depression, and other mental health conditions. According to the Centers for Disease Control and Prevention (CDC), more than one in five adults in the United States live with a mental illness (insert citation). Poor mental health can significantly affect an individual’s quality of life, impacting emotional well-being, job performance, relationships, and physical health. Yet, according to the National Institutes of Health (NIH), only about half of those experiencing mental illness receive treatment.
+In recent years, the mental health epidemic has become a growing public health concern. Factors such as social isolation, economic uncertainty, the stigmatization of mental illness, and limited access to care have all contributed to an increase in reported cases of anxiety, depression, and other mental health conditions. According to the Centers for Disease Control and Prevention (CDC), "more than one in five adults in the United States live with a mental illness" (@CDC2025Mental). Poor mental health can significantly affect an individual’s quality of life, impacting emotional well-being, job performance, relationships, and physical health. Yet, according to the National Institutes of Health (NIH), only about "half of those experiencing mental illness receive treatment"(@NHI2025Stat).
 
 This concerning gap between mental health needs and treatment raises an important question: does access to mental health care influence mental health outcomes?
 
@@ -768,9 +769,3 @@ For future work, we believe using geographical factors, behavioral health indica
 
 ## Appendix
 
-
-## Sources
-
-1. National Institute of Mental Health. (n.d.). Mental health statistics. U.S. Department of Health and Human Services. https://www.nimh.nih.gov/health/statistics (Accessed July 20, 2025)
-
-2. Centers for Disease Control and Prevention. (2023, September 15). About mental health. U.S. Department of Health and Human Services. https://www.cdc.gov/mental-health/about/index.html (Accessed July 20, 2025)
